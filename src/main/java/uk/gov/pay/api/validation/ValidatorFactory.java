@@ -1,28 +1,27 @@
 package uk.gov.pay.api.validation;
 
-import org.glassfish.hk2.api.Factory;
+import io.micronaut.context.annotation.Bean;
+import io.micronaut.context.annotation.Factory;
 
-import jakarta.inject.Inject;
-import jakarta.validation.ConstraintValidatorFactory;
+import jakarta.inject.Singleton;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 
-public class ValidatorFactory implements Factory<Validator> {
+/**
+ * The Bean Validation (Hibernate Validator) validator for request entities and headers, with its standard messages.
+ * Its factory lives as long as the application and is closed with it.
+ */
+@Factory
+public class ValidatorFactory {
 
-    private final ConstraintValidatorFactory constraintValidatorFactory;
-
-    @Inject
-    public ValidatorFactory(ConstraintValidatorFactory constraintValidatorFactory) {
-        this.constraintValidatorFactory = constraintValidatorFactory;
-    }
-    
-    @Override
-    public Validator provide() {
-        return Validation.byDefaultProvider().configure().constraintValidatorFactory(constraintValidatorFactory)
-                .buildValidatorFactory().getValidator();
+    @Singleton
+    @Bean(preDestroy = "close")
+    public jakarta.validation.ValidatorFactory validatorFactory() {
+        return Validation.byDefaultProvider().configure().buildValidatorFactory();
     }
 
-    @Override
-    public void dispose(Validator validator) {
+    @Singleton
+    public Validator validator(jakarta.validation.ValidatorFactory validatorFactory) {
+        return validatorFactory.getValidator();
     }
 }

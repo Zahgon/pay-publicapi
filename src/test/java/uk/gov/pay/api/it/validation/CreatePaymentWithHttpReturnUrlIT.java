@@ -1,19 +1,16 @@
 package uk.gov.pay.api.it.validation;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
-import io.dropwizard.testing.junit5.DropwizardAppExtension;
-import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import io.restassured.response.ValidatableResponse;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import uk.gov.pay.api.app.PublicApi;
-import uk.gov.pay.api.app.config.PublicApiConfig;
-import uk.gov.pay.api.it.rule.RedisDockerRule;
+import uk.gov.pay.api.it.support.InMemoryRedisExtension;
+import uk.gov.pay.api.it.support.PublicApiTestApp;
 import uk.gov.pay.api.utils.ApiKeyGenerator;
 import uk.gov.pay.api.utils.mocks.Junit5ConnectorMockClient;
 
@@ -23,23 +20,20 @@ import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.matching;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
-import static io.dropwizard.testing.ConfigOverride.config;
-import static io.dropwizard.testing.ResourceHelpers.resourceFilePath;
+import static io.micronaut.http.HttpHeaders.ACCEPT;
+import static io.micronaut.http.HttpHeaders.AUTHORIZATION;
+import static io.micronaut.http.HttpHeaders.CONTENT_TYPE;
+import static io.micronaut.http.MediaType.APPLICATION_JSON;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
-import static jakarta.ws.rs.core.HttpHeaders.ACCEPT;
-import static jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION;
-import static jakarta.ws.rs.core.HttpHeaders.CONTENT_TYPE;
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.apache.hc.core5.http.HttpStatus.SC_UNPROCESSABLE_ENTITY;
 import static org.hamcrest.Matchers.is;
+import static uk.gov.pay.api.it.support.PublicApiTestApp.unusedPort;
 import static uk.gov.pay.api.model.TokenPaymentType.CARD;
 import static uk.gov.pay.api.utils.mocks.CreateChargeRequestParams.CreateChargeRequestParamsBuilder.aCreateChargeRequestParams;
 import static uk.gov.service.payments.commons.model.ErrorIdentifier.NON_HTTPS_RETURN_URL_NOT_ALLOWED_FOR_A_LIVE_ACCOUNT;
-import static uk.gov.service.payments.commons.testing.port.PortFactory.findFreePort;
 
 @DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class)
-@ExtendWith(DropwizardExtensionsSupport.class)
 public class CreatePaymentWithHttpReturnUrlIT {
 
     private static final String API_KEY = ApiKeyGenerator.apiKeyValueOf("TEST_BEARER_TOKEN", "qwer9yuhgf");
@@ -47,10 +41,10 @@ public class CreatePaymentWithHttpReturnUrlIT {
     private static final String PAYMENTS_PATH = "/v1/payments/";
 
     @RegisterExtension
-    public static RedisDockerRule redisDockerRule = new RedisDockerRule();
+    public static InMemoryRedisExtension redisDockerRule = new InMemoryRedisExtension();
 
-    private static final int CONNECTOR_PORT = findFreePort();
-    private static final int PUBLIC_AUTH_PORT = findFreePort();
+    private static final int CONNECTOR_PORT = unusedPort();
+    private static final int PUBLIC_AUTH_PORT = unusedPort();
 
     @RegisterExtension
     public static WireMockExtension connectorMock = WireMockExtension.newInstance()
@@ -62,13 +56,11 @@ public class CreatePaymentWithHttpReturnUrlIT {
             .options(wireMockConfig().port(PUBLIC_AUTH_PORT))
             .build();
 
-    private final DropwizardAppExtension<PublicApiConfig> app = new DropwizardAppExtension<>(
-            PublicApi.class,
-            resourceFilePath("config/test-config.yaml"),
-            config("connectorUrl", "http://localhost:" + CONNECTOR_PORT),
-            config("publicAuthUrl", "http://localhost:" + PUBLIC_AUTH_PORT + "/v1/auth"),
-            config("redis.endpoint", redisDockerRule.getRedisUrl()),
-            config("allowHttpForReturnUrl", "true")); 
+    private final PublicApiTestApp app = PublicApiTestApp.withOverrides(
+            "publicapi.connector-url", "http://localhost:" + CONNECTOR_PORT,
+            "publicapi.public-auth-url", "http://localhost:" + PUBLIC_AUTH_PORT + "/v1/auth",
+            "redis.endpoint", redisDockerRule.getRedisUrl(),
+            "publicapi.allow-http-for-return-url", "true"); 
     
     private final Junit5ConnectorMockClient connectorMockClient = new Junit5ConnectorMockClient(connectorMock);
 
@@ -80,6 +72,7 @@ public class CreatePaymentWithHttpReturnUrlIT {
 
     @BeforeEach
     void setup() {
+        app.before();
         publicAuthMock.stubFor(get("/v1/auth")
                 .withHeader(ACCEPT, matching(APPLICATION_JSON))
                 .withHeader(AUTHORIZATION, matching("Bearer " + API_KEY))
@@ -89,6 +82,11 @@ public class CreatePaymentWithHttpReturnUrlIT {
                         .withBody("{\"account_id\" : \"" + GATEWAY_ACCOUNT_ID + "\", " +
                                 "\"token_link\" : \"a-token-link\", " +
                                 "\"token_type\" : \"" + CARD.toString() + "\"}")));
+    }
+
+    @AfterEach
+    void stopApp() {
+        app.after();
     }
 
     @Nested

@@ -1,8 +1,9 @@
 package uk.gov.pay.api.service.telephone;
 
-
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hc.core5.http.HttpStatus;
+import uk.gov.pay.api.app.RestClient;
+import uk.gov.pay.api.app.RestClientResponse;
 import uk.gov.pay.api.auth.Account;
 import uk.gov.pay.api.exception.CreateChargeException;
 import uk.gov.pay.api.model.ChargeFromResponse;
@@ -11,26 +12,23 @@ import uk.gov.pay.api.model.telephone.TelephonePaymentResponse;
 import uk.gov.pay.api.service.ConnectorUriGenerator;
 
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.Entity;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
+import jakarta.inject.Singleton;
+import java.util.Map;
 
-import static jakarta.ws.rs.client.Entity.json;
-
+@Singleton
 public class CreateTelephonePaymentService {
 
-    private final Client client;
+    private final RestClient client;
     private final ConnectorUriGenerator connectorUriGenerator;
 
     @Inject
-    public CreateTelephonePaymentService(Client client, ConnectorUriGenerator connectorUriGenerator) {
+    public CreateTelephonePaymentService(RestClient client, ConnectorUriGenerator connectorUriGenerator) {
         this.client = client;
         this.connectorUriGenerator = connectorUriGenerator;
     }
     
     public Pair<TelephonePaymentResponse, Integer> create(Account account, CreateTelephonePaymentRequest createTelephonePaymentRequest) {
-        Response connectorResponse = createTelephoneCharge(account, createTelephonePaymentRequest);
+        RestClientResponse connectorResponse = createTelephoneCharge(account, createTelephonePaymentRequest);
 
         if (!createdSuccessfully(connectorResponse)) {
             throw new CreateChargeException(connectorResponse);
@@ -41,19 +39,12 @@ public class CreateTelephonePaymentService {
         return Pair.of(telephonePaymentResponse, connectorResponse.getStatus());
     }
 
-    private boolean createdSuccessfully(Response connectorResponse) {
+    private boolean createdSuccessfully(RestClientResponse connectorResponse) {
         return connectorResponse.getStatus() == HttpStatus.SC_CREATED || connectorResponse.getStatus() == HttpStatus.SC_OK;
     }
 
-    private Response createTelephoneCharge(Account account, CreateTelephonePaymentRequest createTelephonePaymentRequest) {
-        return client
-                .target(connectorUriGenerator.telephoneChargesURI(account))
-                .request()
-                .accept(MediaType.APPLICATION_JSON)
-                .post(buildTelephoneChargeRequestPayload(createTelephonePaymentRequest));
-    }
-
-    private Entity buildTelephoneChargeRequestPayload(CreateTelephonePaymentRequest requestPayload) {
-        return json(requestPayload.toConnectorPayload());
+    private RestClientResponse createTelephoneCharge(Account account, CreateTelephonePaymentRequest createTelephonePaymentRequest) {
+        return client.post(connectorUriGenerator.telephoneChargesURI(account),
+                Map.of("Accept", "application/json"), createTelephonePaymentRequest.toConnectorPayload());
     }
 }

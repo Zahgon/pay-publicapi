@@ -1,0 +1,58 @@
+# Configuration of the service. Every value is read from the environment variable named in it, with the default
+# the service has always used.
+micronaut:
+  application:
+    name: publicapi
+  servlet:
+    # Requests complete on the container thread that received them, inside the servlet filters.
+    async-supported: false
+  server:
+    port: ${PORT:8080}
+    host: ${BIND_HOST:127.0.0.1}
+    # The original's Jetty accepted any request size the container accepted; keep Micronaut's limits out of the way.
+    max-request-size: 10485760
+    jetty:
+      init-parameters:
+        org.eclipse.jetty.servlet.Default.dirAllowed: false
+  http:
+    client:
+      read-timeout: 30s
+      follow-redirects: false
+      exception-on-error-status: false
+
+publicapi:
+  admin-port: ${ADMIN_PORT:8081}
+  base-url: ${PUBLICAPI_BASE:}
+  connector-url: ${CONNECTOR_URL:}
+  public-auth-url: ${PUBLIC_AUTH_URL:}
+  ledger-url: ${LEDGER_URL:}
+  allow-http-for-return-url: ${ALLOW_HTTP_FOR_RETURN_URL:false}
+  api-key-hmac-secret: ${TOKEN_API_HMAC_SECRET:}
+  authentication-cache-policy: expireAfterWrite=1m
+  ecs-container-metadata-uri-v4: ${ECS_CONTAINER_METADATA_URI_V4:}
+
+rest-client:
+  disabled-secure-connection: ${DISABLE_INTERNAL_HTTPS:false}
+
+rate-limiter:
+  no-of-req: ${RATE_LIMITER_VALUE:75}
+  no-of-req-for-post: ${RATE_LIMITER_VALUE_POST:15}
+  elevated-accounts: ${RATE_LIMITER_ELEVATED_ACCOUNTS:}
+  no-of-req-for-elevated-accounts: ${RATE_LIMITER_ELEVATED_VALUE_GET:100}
+  no-of-post-req-for-elevated-accounts: ${RATE_LIMITER_ELEVATED_VALUE_POST:40}
+  no-of-req-per-node: ${RATE_LIMITER_VALUE_PER_NODE:25}
+  no-of-req-for-post-per-node: ${RATE_LIMITER_VALUE_PER_NODE_POST:5}
+  per-millis: ${RATE_LIMITER_PER_MILLIS:1000}
+  low-traffic-accounts: ${RATE_LIMITER_LOW_TRAFFIC_ACCOUNTS:}
+  no-of-req-for-low-traffic-accounts: ${RATE_LIMITER_LOW_TRAFFIC_VALUE_GET:4500}
+  no-of-post-req-for-low-traffic-accounts: ${RATE_LIMITER_LOW_TRAFFIC_VALUE_POST:1}
+  interval-in-millis-for-low-traffic-accounts: ${RATE_LIMITER_LOW_TRAFFIC_PER_MILLIS:60000}
+
+redis:
+  endpoint: ${REDIS_URL:localhost:6379}
+  ssl: ${REDIS_SSL:false}
+  command-timeout: ${REDIS_COMMAND_TIMEOUT:250ms}
+  connect-timeout: ${REDIS_CONNECT_TIMEOUT:100ms}
+  reconnect-delay-lower-bound: ${REDIS_RECONNECT_DELAY_LOWER_BOUND:100ms}
+  reconnect-delay-upper-bound: ${REDIS_RECONNECT_DELAY_UPPER_BOUND:10000ms}
+  reconnect-delay-base: ${REDIS_RECONNECT_DELAY_BASE:100}

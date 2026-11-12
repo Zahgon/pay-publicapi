@@ -7,9 +7,11 @@ import uk.gov.pay.api.model.search.dispute.DisputeForSearchResult;
 import uk.gov.pay.api.model.search.dispute.DisputesSearchResults;
 
 import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Singleton
 public class SearchDisputesService {
     private static final String DISPUTES_PATH = "/v1/disputes";
     private final LedgerService ledgerService;

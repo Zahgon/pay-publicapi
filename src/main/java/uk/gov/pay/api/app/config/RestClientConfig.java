@@ -1,10 +1,10 @@
 package uk.gov.pay.api.app.config;
 
+import io.micronaut.context.annotation.ConfigurationProperties;
 
-import io.dropwizard.core.Configuration;
+@ConfigurationProperties("rest-client")
+public class RestClientConfig {
 
-public class RestClientConfig extends Configuration {
-    
     private String disabledSecureConnection = "false";
 
     public RestClientConfig() {
@@ -18,4 +18,7 @@ public class RestClientConfig extends Configuration {
         return "true".equals(disabledSecureConnection);
     }
 
+    public void setDisabledSecureConnection(String disabledSecureConnection) {
+        this.disabledSecureConnection = disabledSecureConnection;
+    }
 }

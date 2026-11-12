@@ -2,7 +2,7 @@ package uk.gov.pay.api.model.links;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import static jakarta.ws.rs.HttpMethod.GET;
+import static uk.gov.pay.api.utils.HttpMethods.GET;
 
 @Schema(name = "DisputeLinksForSearch", description = "links for search dispute resource")
 public class DisputeLinksForSearch {

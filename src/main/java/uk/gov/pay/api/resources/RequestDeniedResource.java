@@ -1,62 +1,57 @@
 package uk.gov.pay.api.resources;
 
-import com.codahale.metrics.annotation.Timed;
+import io.micronaut.core.annotation.Nullable;
+import io.micronaut.http.HttpResponse;
+import io.micronaut.http.MediaType;
+import io.micronaut.http.annotation.Consumes;
+import io.micronaut.http.annotation.Controller;
+import io.micronaut.http.annotation.Delete;
+import io.micronaut.http.annotation.Get;
+import io.micronaut.http.annotation.Header;
+import io.micronaut.http.annotation.Post;
+import io.micronaut.http.annotation.Produces;
+import io.micronaut.http.annotation.Put;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import jakarta.ws.rs.DELETE;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.HeaderParam;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.PUT;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.Response;
-
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
-import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static uk.gov.pay.api.model.RequestError.Code.REQUEST_DENIED_ERROR;
 import static uk.gov.pay.api.model.RequestError.aRequestError;
 
-@Path("/")
+@Controller
 public class RequestDeniedResource {
 
     private static final Logger logger = LoggerFactory.getLogger(RequestDeniedResource.class);
 
-    @GET
-    @Timed
-    @Path("request-denied")
-    @Produces(APPLICATION_JSON)
-    public Response requestDeniedGet(@HeaderParam("x-naxsi_sig") String naxsiViolatedRules) {
+    @Get("/request-denied")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.ALL)
+    public HttpResponse<?> requestDeniedGet(@Nullable @Header("x-naxsi_sig") String naxsiViolatedRules) {
         return requestDenied(naxsiViolatedRules);
     }
 
-    @POST
-    @Timed
-    @Path("request-denied")
-    @Produces(APPLICATION_JSON)
-    public Response requestDeniedPost(@HeaderParam("x-naxsi_sig") String naxsiViolatedRules) {
+    @Post("/request-denied")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.ALL)
+    public HttpResponse<?> requestDeniedPost(@Nullable @Header("x-naxsi_sig") String naxsiViolatedRules) {
         return requestDenied(naxsiViolatedRules);
     }
 
-    @PUT
-    @Timed
-    @Path("request-denied")
-    @Produces(APPLICATION_JSON)
-    public Response requestDeniedPut(@HeaderParam("x-naxsi_sig") String naxsiViolatedRules) {
+    @Put("/request-denied")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.ALL)
+    public HttpResponse<?> requestDeniedPut(@Nullable @Header("x-naxsi_sig") String naxsiViolatedRules) {
         return requestDenied(naxsiViolatedRules);
     }
 
-    @DELETE
-    @Timed
-    @Path("request-denied")
-    @Produces(APPLICATION_JSON)
-    public Response requestDeniedDelete(@HeaderParam("x-naxsi_sig") String naxsiViolatedRules) {
+    @Delete("/request-denied")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.ALL)
+    public HttpResponse<?> requestDeniedDelete(@Nullable @Header("x-naxsi_sig") String naxsiViolatedRules) {
         return requestDenied(naxsiViolatedRules);
     }
 
-    private Response requestDenied(@HeaderParam("x-naxsi_sig") String naxsiViolatedRules) {
+    private HttpResponse<?> requestDenied(String naxsiViolatedRules) {
         logger.info("Naxsi rules violated - [ {} ]", naxsiViolatedRules);
-        return Response.status(BAD_REQUEST).entity(aRequestError(REQUEST_DENIED_ERROR)).build();
+        return HttpResponse.badRequest(aRequestError(REQUEST_DENIED_ERROR));
     }
 }

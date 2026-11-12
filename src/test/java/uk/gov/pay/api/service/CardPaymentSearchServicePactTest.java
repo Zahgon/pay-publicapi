@@ -1,28 +1,25 @@
 package uk.gov.pay.api.service;
 
-import au.com.dius.pact.consumer.junit.PactVerification;
 import com.jayway.jsonassert.JsonAssert;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import io.micronaut.http.HttpResponse;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
-import uk.gov.pay.api.app.RestClientFactory;
+import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.pay.api.app.RestClient;
 import uk.gov.pay.api.app.config.PublicApiConfig;
-import uk.gov.pay.api.app.config.RestClientConfig;
 import uk.gov.pay.api.auth.Account;
 import uk.gov.pay.api.exception.SearchPaymentsException;
 import uk.gov.pay.api.ledger.service.LedgerUriGenerator;
 import uk.gov.pay.api.model.TokenPaymentType;
 import uk.gov.pay.api.model.search.PaginationDecorator;
+import uk.gov.pay.api.utils.RestClients;
+import uk.gov.pay.api.utils.pact.PactProviderExtension;
+import uk.gov.pay.api.utils.pact.Pacts;
 import uk.gov.service.payments.commons.model.AgreementPaymentType;
 import uk.gov.service.payments.commons.model.AuthorisationMode;
-import uk.gov.service.payments.commons.testing.pact.consumers.Pacts;
-import uk.gov.service.payments.commons.testing.pact.consumers.PayPactProviderRule;
-
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.core.Response;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -31,27 +28,27 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class CardPaymentSearchServicePactTest {
 
-    @Rule
-    public PayPactProviderRule ledgerRule = new PayPactProviderRule("ledger", this);
+    @RegisterExtension
+    public PactProviderExtension ledgerRule = new PactProviderExtension("ledger");
 
     @Mock
     private PublicApiConfig configuration;
     private PaymentSearchService paymentSearchService;
     private static final String tokenLink = "a-token-link";
 
-    @Before
+    @BeforeEach
     public void setUp() {
         when(configuration.getLedgerUrl()).thenReturn(ledgerRule.getUrl());
 
         when(configuration.getBaseUrl()).thenReturn("http://publicapi.test.localhost/");
 
-        Client client = RestClientFactory.buildClient(new RestClientConfig(false));
+        RestClient client = RestClients.newRestClient(false);
         LedgerUriGenerator ledgerUriGenerator = new LedgerUriGenerator(configuration);
         paymentSearchService = new PaymentSearchService(
                 new PublicApiUriGenerator(configuration),
@@ -60,7 +57,6 @@ public class CardPaymentSearchServicePactTest {
     }
 
     @Test
-    @PactVerification({"ledger"})
     @Pacts(pacts = {"publicapi-ledger-search-payment-by-first-digits-card-number"})
     public void searchShouldReturnAResponseWithOneTransaction_whenFilteringByFirstDigitsCardNumberFromLedger() {
         Account account = new Account("123456", TokenPaymentType.CARD, tokenLink);
@@ -69,8 +65,8 @@ public class CardPaymentSearchServicePactTest {
                 .withPageNumber("1")
                 .withDisplaySize("500")
                 .build();
-        Response response = paymentSearchService.searchLedgerPayments(account, searchParams);
-        JsonAssert.with(response.getEntity().toString())
+        HttpResponse<String> response = paymentSearchService.searchLedgerPayments(account, searchParams);
+        JsonAssert.with(response.body())
                 .assertThat("count", is(1))
                 .assertThat("total", is(1))
                 .assertThat("page", is(1))
@@ -87,7 +83,6 @@ public class CardPaymentSearchServicePactTest {
     }
 
     @Test
-    @PactVerification({"ledger"})
     @Pacts(pacts = {"publicapi-ledger-search-payment-by-last-digits-card-number"})
     public void searchShouldReturnAResponseWithOneTransaction_whenFilteringByLastDigitsCardNumberFromLedger() {
         Account account = new Account("123456", TokenPaymentType.CARD, tokenLink);
@@ -96,8 +91,8 @@ public class CardPaymentSearchServicePactTest {
                 .withPageNumber("1")
                 .withDisplaySize("500")
                 .build();
-        Response response = paymentSearchService.searchLedgerPayments(account, searchParams);
-        JsonAssert.with(response.getEntity().toString())
+        HttpResponse<String> response = paymentSearchService.searchLedgerPayments(account, searchParams);
+        JsonAssert.with(response.body())
                 .assertThat("count", is(1))
                 .assertThat("total", is(1))
                 .assertThat("page", is(1))
@@ -114,7 +109,6 @@ public class CardPaymentSearchServicePactTest {
     }
 
     @Test
-    @PactVerification({"ledger"})
     @Pacts(pacts = {"publicapi-ledger-search-payment-with-charge-in-success-state"})
     public void searchShouldReturnAResponseWithOneTransaction_whenFilteringByStateFromLedger() {
         Account account = new Account("123456", TokenPaymentType.CARD, tokenLink);
@@ -123,8 +117,8 @@ public class CardPaymentSearchServicePactTest {
                 .withPageNumber("1")
                 .withDisplaySize("500")
                 .build();
-        Response response = paymentSearchService.searchLedgerPayments(account, searchParams);
-        JsonAssert.with(response.getEntity().toString())
+        HttpResponse<String> response = paymentSearchService.searchLedgerPayments(account, searchParams);
+        JsonAssert.with(response.body())
                 .assertThat("count", is(1))
                 .assertThat("total", is(1))
                 .assertThat("page", is(1))
@@ -141,7 +135,6 @@ public class CardPaymentSearchServicePactTest {
     }
 
     @Test
-    @PactVerification({"ledger"})
     @Pacts(pacts = {"publicapi-ledger-search-payments"})
     public void ledgerSearchShouldReturnAResponseWithOneTransaction() {
         Account account = new Account("123456", TokenPaymentType.CARD, tokenLink);
@@ -149,8 +142,8 @@ public class CardPaymentSearchServicePactTest {
                 .withCardHolderName("j.doe@example.org")
                 .build();
 
-        Response response = paymentSearchService.searchLedgerPayments(account, searchParams);
-        JsonAssert.with(response.getEntity().toString())
+        HttpResponse<String> response = paymentSearchService.searchLedgerPayments(account, searchParams);
+        JsonAssert.with(response.body())
                 .assertThat("count", is(1))
                 .assertThat("total", is(1))
                 .assertThat("page", is(1))
@@ -171,7 +164,6 @@ public class CardPaymentSearchServicePactTest {
     }
 
     @Test
-    @PactVerification({"ledger"})
     @Pacts(pacts = {"publicapi-ledger-search-payments-page-not-found"})
     public void shouldReturn404WhenSearchingWithNonExistentPageNumber() {
         Account account = new Account("123456", TokenPaymentType.CARD, tokenLink);
@@ -187,7 +179,6 @@ public class CardPaymentSearchServicePactTest {
     }
 
     @Test
-    @PactVerification({"ledger"})
     @Pacts(pacts = ("publicapi-ledger-search-payments-with-settled_dates"))
     public void shouldReturnAPaymentWhenSearchedBySettledDates() {
         String accountId = "123456";
@@ -198,8 +189,8 @@ public class CardPaymentSearchServicePactTest {
                 .withDisplaySize("500")
                 .withPageNumber("1")
                 .build();
-        Response response = paymentSearchService.searchLedgerPayments(account, searchParams);
-        JsonAssert.with(response.getEntity().toString())
+        HttpResponse<String> response = paymentSearchService.searchLedgerPayments(account, searchParams);
+        JsonAssert.with(response.body())
                 .assertThat("count", is(1))
                 .assertThat("total", is(1))
                 .assertThat("page", is(1))
@@ -209,7 +200,6 @@ public class CardPaymentSearchServicePactTest {
     }
 
     @Test
-    @PactVerification({"ledger"})
     @Pacts(pacts = ("publicapi-ledger-search-payment-by-agreement-id"))
     public void shouldReturnAPaymentWhenSearchedByAgreementId() {
         String accountId = "123456";
@@ -220,8 +210,8 @@ public class CardPaymentSearchServicePactTest {
                 .withDisplaySize("500")
                 .withPageNumber("1")
                 .build();
-        Response response = paymentSearchService.searchLedgerPayments(account, searchParams);
-        JsonAssert.with(response.getEntity().toString())
+        HttpResponse<String> response = paymentSearchService.searchLedgerPayments(account, searchParams);
+        JsonAssert.with(response.body())
                 .assertThat("count", is(1))
                 .assertThat("total", is(1))
                 .assertThat("page", is(1))
@@ -231,7 +221,6 @@ public class CardPaymentSearchServicePactTest {
     }
 
     @Test
-    @PactVerification({"ledger"})
     @Pacts(pacts = {"publicapi-ledger-search-payment-with-charge-in-success-state-that-has-exemption-honoured"})
     public void searchShouldReturnAResponseWithOneTransactionThatHasHonouredExemption_whenFilteringByStateFromLedger() {
         Account account = new Account("123456", TokenPaymentType.CARD, tokenLink);
@@ -240,8 +229,8 @@ public class CardPaymentSearchServicePactTest {
                 .withPageNumber("1")
                 .withDisplaySize("500")
                 .build();
-        Response response = paymentSearchService.searchLedgerPayments(account, searchParams);
-        JsonAssert.with(response.getEntity().toString())
+        HttpResponse<String> response = paymentSearchService.searchLedgerPayments(account, searchParams);
+        JsonAssert.with(response.body())
                 .assertThat("count", is(1))
                 .assertThat("total", is(1))
                 .assertThat("page", is(1))

@@ -5,9 +5,6 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.LoggingEvent;
 import ch.qos.logback.core.Appender;
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.Timer;
-import io.dropwizard.core.setup.Environment;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,9 +52,6 @@ class RedisRateLimiterTest {
     @Mock
     private RateLimiterConfig rateLimiterConfig;
 
-    @Mock
-    private Environment environment;
-
     @Captor
     ArgumentCaptor<LoggingEvent> loggingEventArgumentCaptor;
 
@@ -66,18 +60,10 @@ class RedisRateLimiterTest {
     @Mock
     private Appender<ILoggingEvent> mockAppender;
 
-    @Mock
-    private MetricRegistry metricsRegistry;
-
-    private Timer timer;
-
     @BeforeEach
     void setup() {
-        timer = new Timer();
         when(statefulRedisConnection.sync()).thenReturn(redisCommands);
         when(redisClientManager.getRedisConnection()).thenReturn(statefulRedisConnection);
-        when(environment.metrics()).thenReturn(metricsRegistry);
-        when(metricsRegistry.timer(any())).thenReturn(timer);
 
         Logger root = (Logger) LoggerFactory.getLogger(RedisRateLimiter.class);
         root.setLevel(Level.INFO);
@@ -89,7 +75,7 @@ class RedisRateLimiterTest {
         when(rateLimiterConfig.getNoOfReq()).thenReturn(1);
         when(rateLimiterKey.getKey()).thenReturn("Key1");
         when(rateLimiterConfig.getPerMillis()).thenReturn(1000);
-        redisRateLimiter = new RedisRateLimiter(rateLimiterConfig, redisClientManager, environment);
+        redisRateLimiter = new RedisRateLimiter(rateLimiterConfig, redisClientManager);
 
         when(redisCommands.incr(anyString())).thenReturn(1L);
         when(redisCommands.expire(anyString(), eq(perSecondTimeToLiveInSeconds))).thenReturn(true);
@@ -102,7 +88,7 @@ class RedisRateLimiterTest {
         when(rateLimiterConfig.getNoOfReq()).thenReturn(2);
         when(rateLimiterKey.getKey()).thenReturn("Key2");
         when(rateLimiterConfig.getPerMillis()).thenReturn(1000);
-        redisRateLimiter = new RedisRateLimiter(rateLimiterConfig, redisClientManager, environment);
+        redisRateLimiter = new RedisRateLimiter(rateLimiterConfig, redisClientManager);
 
         when(redisCommands.incr(anyString())).thenReturn(1L, 2L);
         when(redisCommands.expire(anyString(), eq(perSecondTimeToLiveInSeconds))).thenReturn(true);
@@ -118,7 +104,7 @@ class RedisRateLimiterTest {
         when(rateLimiterKey.getKey()).thenReturn("Key3");
         when(rateLimiterKey.getKeyType()).thenReturn("POST");
         when(rateLimiterConfig.getPerMillis()).thenReturn(1000);
-        redisRateLimiter = new RedisRateLimiter(rateLimiterConfig, redisClientManager, environment);
+        redisRateLimiter = new RedisRateLimiter(rateLimiterConfig, redisClientManager);
 
         when(redisCommands.incr(anyString())).thenReturn(1L, 2L, 3L);
         when(redisCommands.expire(anyString(), eq(perSecondTimeToLiveInSeconds))).thenReturn(true);
@@ -143,7 +129,7 @@ class RedisRateLimiterTest {
         when(rateLimiterKey.getMethod()).thenReturn("POST");
         when(rateLimiterKey.getKeyType()).thenReturn("POST-capture-account1");
 
-        redisRateLimiter = new RedisRateLimiter(rateLimiterConfig, redisClientManager, environment);
+        redisRateLimiter = new RedisRateLimiter(rateLimiterConfig, redisClientManager);
 
         when(redisCommands.incr(anyString())).thenReturn(1L, 2L, 3L, 4L);
         when(redisCommands.expire(anyString(), eq(perMinuteTimeToLiveInSeconds))).thenReturn(true);
@@ -166,7 +152,7 @@ class RedisRateLimiterTest {
         when(rateLimiterKey.getMethod()).thenReturn("GET");
         when(rateLimiterKey.getKeyType()).thenReturn("GET-account1");
 
-        redisRateLimiter = new RedisRateLimiter(rateLimiterConfig, redisClientManager, environment);
+        redisRateLimiter = new RedisRateLimiter(rateLimiterConfig, redisClientManager);
 
         when(redisCommands.incr(anyString())).thenReturn(1L, 2L);
         when(redisCommands.expire(anyString(), eq(perMinuteTimeToLiveInSeconds))).thenReturn(true);

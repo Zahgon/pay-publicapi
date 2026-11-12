@@ -1,11 +1,11 @@
 package uk.gov.pay.api.exception;
 
-import jakarta.ws.rs.core.Response;
+import uk.gov.pay.api.app.RestClientResponse;
 
 public class AuthorisationRequestException extends ConnectorResponseErrorException{
-    private Response response;
+    private RestClientResponse response;
 
-    public AuthorisationRequestException(Response response) {
+    public AuthorisationRequestException(RestClientResponse response) {
         super(response);
         this.response = response;
     }

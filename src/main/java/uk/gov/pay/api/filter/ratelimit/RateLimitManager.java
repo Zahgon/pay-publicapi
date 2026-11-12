@@ -2,8 +2,7 @@ package uk.gov.pay.api.filter.ratelimit;
 
 import uk.gov.pay.api.app.config.RateLimiterConfig;
 import uk.gov.pay.api.filter.RateLimiterKey;
-
-import jakarta.ws.rs.HttpMethod;
+import uk.gov.pay.api.utils.HttpMethods;
 
 public class RateLimitManager {
 
@@ -15,7 +14,7 @@ public class RateLimitManager {
 
     public int getAllowedNumberOfRequests(RateLimiterKey rateLimiterKey, String account) {
         if (configuration.getElevatedAccounts().contains(account)) {
-            if (HttpMethod.POST.equals(rateLimiterKey.getMethod())) {
+            if (HttpMethods.POST.equals(rateLimiterKey.getMethod())) {
                 return configuration.getNoOfPostReqForElevatedAccounts();
             }
 
@@ -23,13 +22,13 @@ public class RateLimitManager {
         }
 
         if (configuration.getLowTrafficAccounts().contains(account)) {
-            if (HttpMethod.POST.equals(rateLimiterKey.getMethod())) {
+            if (HttpMethods.POST.equals(rateLimiterKey.getMethod())) {
                 return configuration.getNoOfPostReqForLowTrafficAccounts();
             }
             return configuration.getNoOfReqForLowTrafficAccounts();
         }
 
-        if (HttpMethod.POST.equals(rateLimiterKey.getMethod())) {
+        if (HttpMethods.POST.equals(rateLimiterKey.getMethod())) {
             return configuration.getNoOfReqForPost();
         }
 

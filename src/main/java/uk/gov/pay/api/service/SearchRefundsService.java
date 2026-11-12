@@ -7,9 +7,11 @@ import uk.gov.pay.api.model.search.card.RefundForSearchRefundsResult;
 import uk.gov.pay.api.model.search.card.SearchRefundsResults;
 
 import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Singleton
 public class SearchRefundsService {
 
     private static final String REFUNDS_PATH = "/v1/refunds";

@@ -1,53 +1,49 @@
 package uk.gov.pay.api.service;
 
-import au.com.dius.pact.consumer.junit.PactVerification;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.pay.api.agreement.model.AgreementLedgerResponse;
-import uk.gov.pay.api.app.RestClientFactory;
+import uk.gov.pay.api.app.RestClient;
 import uk.gov.pay.api.app.config.PublicApiConfig;
-import uk.gov.pay.api.app.config.RestClientConfig;
 import uk.gov.pay.api.auth.Account;
 import uk.gov.pay.api.exception.GetAgreementException;
 import uk.gov.pay.api.ledger.service.LedgerUriGenerator;
 import uk.gov.pay.api.model.TokenPaymentType;
-import uk.gov.service.payments.commons.testing.pact.consumers.Pacts;
-import uk.gov.service.payments.commons.testing.pact.consumers.PayPactProviderRule;
-
-import jakarta.ws.rs.client.Client;
+import uk.gov.pay.api.utils.RestClients;
+import uk.gov.pay.api.utils.pact.PactProviderExtension;
+import uk.gov.pay.api.utils.pact.Pacts;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class GetOneAgreementLedgerServicePactTest {
 
     private final Account ACCOUNT = new Account("3456", TokenPaymentType.CARD, "a-token-link");
 
-    @Rule
-    public PayPactProviderRule ledgerRule = new PayPactProviderRule("ledger", this);
+    @RegisterExtension
+    public PactProviderExtension ledgerRule = new PactProviderExtension("ledger");
 
     private LedgerService ledgerService;
     @Mock
     private PublicApiConfig mockConfiguration;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         when(mockConfiguration.getLedgerUrl()).thenReturn(ledgerRule.getUrl());
         LedgerUriGenerator ledgerUriGenerator = new LedgerUriGenerator(mockConfiguration);
-        Client client = RestClientFactory.buildClient(new RestClientConfig(false));
+        RestClient client = RestClients.newRestClient(false);
         ledgerService = new LedgerService(client, ledgerUriGenerator);
     }
 
     @Test
-    @PactVerification({"ledger"})
     @Pacts(pacts = {"publicapi-ledger-get-one-agreement"})
     public void getOneAgreement() {
         AgreementLedgerResponse getAgreementResponse = ledgerService.getAgreement(ACCOUNT, "abcdefghijklmnopqrstuvwxyz");
@@ -57,7 +53,6 @@ public class GetOneAgreementLedgerServicePactTest {
     }
 
     @Test
-    @PactVerification({"ledger"})
     @Pacts(pacts = {"publicapi-ledger-get-one-agreement-not-found"})
     public void getOneAgreementNotFound() {
         GetAgreementException getAgreementException = assertThrows(GetAgreementException.class,

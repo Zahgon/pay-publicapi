@@ -1,6 +1,8 @@
 package uk.gov.pay.api.service;
 
 import org.apache.hc.core5.http.HttpStatus;
+import uk.gov.pay.api.app.RestClient;
+import uk.gov.pay.api.app.RestClientResponse;
 import uk.gov.pay.api.auth.Account;
 import uk.gov.pay.api.exception.CreateChargeException;
 import uk.gov.pay.api.model.Charge;
@@ -10,34 +12,30 @@ import uk.gov.pay.api.model.CreatedPaymentWithAllLinks;
 import uk.gov.pay.api.model.links.PaymentWithAllLinks;
 
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.Entity;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.MultivaluedHashMap;
-import jakarta.ws.rs.core.MultivaluedMap;
-import jakarta.ws.rs.core.Response;
-
+import jakarta.inject.Singleton;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 
-import static jakarta.ws.rs.client.Entity.json;
 import static uk.gov.pay.api.model.CreatedPaymentWithAllLinks.WhenCreated.BRAND_NEW;
 import static uk.gov.pay.api.model.CreatedPaymentWithAllLinks.WhenCreated.EXISTING;
 
+@Singleton
 public class CreatePaymentService {
 
-    private final Client client;
+    private final RestClient client;
     private final PublicApiUriGenerator publicApiUriGenerator;
     private final ConnectorUriGenerator connectorUriGenerator;
 
     @Inject
-    public CreatePaymentService(Client client, PublicApiUriGenerator publicApiUriGenerator, ConnectorUriGenerator connectorUriGenerator) {
+    public CreatePaymentService(RestClient client, PublicApiUriGenerator publicApiUriGenerator, ConnectorUriGenerator connectorUriGenerator) {
         this.client = client;
         this.publicApiUriGenerator = publicApiUriGenerator;
         this.connectorUriGenerator = connectorUriGenerator;
     }
 
     public CreatedPaymentWithAllLinks create(Account account, CreateCardPaymentRequest createCardPaymentRequest, String idempotencyKey) {
-        Response connectorResponse = createCharge(account, createCardPaymentRequest, idempotencyKey);
+        RestClientResponse connectorResponse = createCharge(account, createCardPaymentRequest, idempotencyKey);
 
         if (connectorCreatedNewPayment(connectorResponse)) {
             ChargeFromResponse chargeFromResponse = connectorResponse.readEntity(ChargeFromResponse.class);
@@ -63,29 +61,21 @@ public class CreatePaymentService {
                 publicApiUriGenerator.getPaymentAuthorisationURI());
     }
 
-    private boolean connectorCreatedNewPayment(Response connectorResponse) {
+    private boolean connectorCreatedNewPayment(RestClientResponse connectorResponse) {
         return connectorResponse.getStatus() == HttpStatus.SC_CREATED;
     }
 
-    private boolean connectorReturnedExistingPayment(Response connectorResponse) {
+    private boolean connectorReturnedExistingPayment(RestClientResponse connectorResponse) {
         return connectorResponse.getStatus() == HttpStatus.SC_OK;
     }
 
-    private Response createCharge(Account account, CreateCardPaymentRequest createCardPaymentRequest, String idempotencyKey) {
-        MultivaluedMap<String, Object> headers = new MultivaluedHashMap<>();
+    private RestClientResponse createCharge(Account account, CreateCardPaymentRequest createCardPaymentRequest, String idempotencyKey) {
+        Map<String, String> headers = new LinkedHashMap<>();
 
         Optional.ofNullable(idempotencyKey)
-                .ifPresent(key -> headers.add("Idempotency-Key", idempotencyKey));
+                .ifPresent(key -> headers.put("Idempotency-Key", idempotencyKey));
 
-        return client
-                .target(connectorUriGenerator.chargesURI(account))
-                .request()
-                .headers(headers)
-                .accept(MediaType.APPLICATION_JSON)
-                .post(buildChargeRequestPayload(createCardPaymentRequest));
-    }
-
-    private Entity buildChargeRequestPayload(CreateCardPaymentRequest requestPayload) {
-        return json(requestPayload.toConnectorPayload());
+        headers.put("Accept", "application/json");
+        return client.post(connectorUriGenerator.chargesURI(account), headers, createCardPaymentRequest.toConnectorPayload());
     }
 }

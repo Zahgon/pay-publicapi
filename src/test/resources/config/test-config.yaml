@@ -1,60 +1,43 @@
-server:
-  applicationConnectors:
-    - type: http
-      bindHost: ${BIND_HOST:-127.0.0.1}
-      port: 0
-  adminConnectors:
-    - type: http
-      bindHost: ${BIND_HOST:-127.0.0.1}
-      port: 0
-  requestLog:
-    appenders: []
+# Configuration of the service under test (Micronaut property names, see src/main/resources/application.yml).
+micronaut:
+  server:
+    host: 127.0.0.1
+    port: -1
 
-logging:
-  level: ERROR
-  appenders:
-    - type: logstash-console
-      threshold: ERROR
-      target: stdout
-      customFields:
-        container: "publicapi"
+publicapi:
+  admin-port: 0
+  base-url: http://publicapi.url/
+  connector-url: http://connector_card.url/
+  public-auth-url: http://publicauth.url/v1/api/auth
+  ledger-url: http://ledger.url/
+  allow-http-for-return-url: false
+  api-key-hmac-secret: qwer9yuhgf
+  # Caching authenticator.
+  authentication-cache-policy: expireAfterWrite=0s
+  ecs-container-metadata-uri-v4: ""
 
-baseUrl: http://publicapi.url/
-connectorUrl: http://connector_card.url/
-publicAuthUrl: http://publicauth.url/v1/api/auth
-ledgerUrl: http://ledger.url/
+rest-client:
+  disabled-secure-connection: "true"
 
-jerseyClientConfig:
-  disabledSecureConnection: "true"
-
-rateLimiter:
-  noOfReq: 1000
-  perMillis: 1000
-  noOfReqForPost: 1000
-  noOfReqPerNode: 1
-  noOfReqForPostPerNode: 1
-  elevatedAccounts: 1, 2, 3
-  noOfReqForElevatedAccounts: 1000
-  noOfPostReqForElevatedAccounts: 1000
-  lowTrafficAccounts:
-  noOfReqForLowTrafficAccounts: 1
-  noOfPostReqForLowTrafficAccounts: 1
-  intervalInMillisForLowTrafficAccounts: 1000
+rate-limiter:
+  no-of-req: 1000
+  per-millis: 1000
+  no-of-req-for-post: 1000
+  no-of-req-per-node: 1
+  no-of-req-for-post-per-node: 1
+  elevated-accounts: 1, 2, 3
+  no-of-req-for-elevated-accounts: 1000
+  no-of-post-req-for-elevated-accounts: 1000
+  low-traffic-accounts:
+  no-of-req-for-low-traffic-accounts: 1
+  no-of-post-req-for-low-traffic-accounts: 1
+  interval-in-millis-for-low-traffic-accounts: 1000
 
 redis:
   endpoint: localhost:6379
   ssl: false
-  commandTimeout: 250ms
-  connectTimeout: 100ms
-  reconnectDelayLowerBound: 100ms
-  reconnectDelayUpperBound: 10000ms
-  reconnectDelayBase: 100
-
-allowHttpForReturnUrl: false
-
-apiKeyHmacSecret: qwer9yuhgf
-
-# Caching authenticator.
-authenticationCachePolicy: expireAfterWrite=0s
-
-ecsContainerMetadataUriV4: ${ECS_CONTAINER_METADATA_URI_V4:-}
+  command-timeout: 250ms
+  connect-timeout: 100ms
+  reconnect-delay-lower-bound: 100ms
+  reconnect-delay-upper-bound: 10000ms
+  reconnect-delay-base: 100

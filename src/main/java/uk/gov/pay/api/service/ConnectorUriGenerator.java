@@ -2,14 +2,16 @@ package uk.gov.pay.api.service;
 
 import uk.gov.pay.api.app.config.PublicApiConfig;
 import uk.gov.pay.api.auth.Account;
+import uk.gov.pay.api.utils.UriTemplate;
 
 import jakarta.inject.Inject;
-import jakarta.ws.rs.core.UriBuilder;
+import jakarta.inject.Singleton;
 import java.util.Collections;
 import java.util.Map;
 
 import static java.lang.String.format;
 
+@Singleton
 public class ConnectorUriGenerator {
     private final PublicApiConfig configuration;
 
@@ -71,7 +73,7 @@ public class ConnectorUriGenerator {
     }
 
     private String buildConnectorUri(String path, Map<String, String> params) {
-        UriBuilder builder = UriBuilder.fromPath(configuration.getConnectorUrl()).path(path);
+        UriTemplate builder = UriTemplate.fromPath(configuration.getConnectorUrl()).path(path);
         params.entrySet().stream()
                 .filter(k -> k.getValue() != null)
                 .forEach(k -> builder.queryParam(k.getKey(), k.getValue()));

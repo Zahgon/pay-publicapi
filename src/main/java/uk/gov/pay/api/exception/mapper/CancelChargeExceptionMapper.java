@@ -1,41 +1,43 @@
 package uk.gov.pay.api.exception.mapper;
 
+import io.micronaut.http.HttpResponse;
+import io.micronaut.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.api.exception.CancelChargeException;
 import uk.gov.pay.api.model.RequestError;
 
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.ext.ExceptionMapper;
+import jakarta.inject.Singleton;
 
-import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
-import static jakarta.ws.rs.core.Response.Status.CONFLICT;
-import static jakarta.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static io.micronaut.http.HttpStatus.BAD_REQUEST;
+import static io.micronaut.http.HttpStatus.CONFLICT;
+import static io.micronaut.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static io.micronaut.http.HttpStatus.NOT_FOUND;
 import static uk.gov.pay.api.model.RequestError.Code.CANCEL_PAYMENT_CONNECTOR_BAD_REQUEST_ERROR;
 import static uk.gov.pay.api.model.RequestError.Code.CANCEL_PAYMENT_CONNECTOR_CONFLICT_ERROR;
 import static uk.gov.pay.api.model.RequestError.Code.CANCEL_PAYMENT_CONNECTOR_ERROR;
 import static uk.gov.pay.api.model.RequestError.Code.CANCEL_PAYMENT_NOT_FOUND_ERROR;
 import static uk.gov.pay.api.model.RequestError.aRequestError;
 
-public class CancelChargeExceptionMapper implements ExceptionMapper<CancelChargeException> {
+@Singleton
+public class CancelChargeExceptionMapper extends SafeExceptionMapper<CancelChargeException> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CancelChargeExceptionMapper.class);
 
     @Override
-    public Response toResponse(CancelChargeException exception) {
+    protected HttpResponse<?> toResponse(CancelChargeException exception) {
 
         int errorStatus = exception.getErrorStatus();
         RequestError requestError;
-        Response.Status status;
+        HttpStatus status;
 
-        if (errorStatus == NOT_FOUND.getStatusCode()) {
+        if (errorStatus == NOT_FOUND.getCode()) {
             requestError = aRequestError(CANCEL_PAYMENT_NOT_FOUND_ERROR);
             status = NOT_FOUND;
-        } else if (errorStatus == BAD_REQUEST.getStatusCode()) {
+        } else if (errorStatus == BAD_REQUEST.getCode()) {
             requestError = aRequestError(CANCEL_PAYMENT_CONNECTOR_BAD_REQUEST_ERROR);
             status = BAD_REQUEST;
-        } else if (errorStatus == CONFLICT.getStatusCode()) {
+        } else if (errorStatus == CONFLICT.getCode()) {
             requestError = aRequestError(CANCEL_PAYMENT_CONNECTOR_CONFLICT_ERROR);
             status = CONFLICT;
         } else {
@@ -46,9 +48,6 @@ public class CancelChargeExceptionMapper implements ExceptionMapper<CancelCharge
         if (status == INTERNAL_SERVER_ERROR) {
             LOGGER.error("Connector invalid response was {}.\n Returning http status {} with error body {}", exception.getMessage(), status, requestError);
         }
-        return Response
-                .status(status)
-                .entity(requestError)
-                .build();
+        return ErrorResponses.of(status, requestError);
     }
 }

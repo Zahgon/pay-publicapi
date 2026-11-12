@@ -1,43 +1,41 @@
 package uk.gov.pay.api.service;
 
-import au.com.dius.pact.consumer.junit.PactVerification;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
-import uk.gov.pay.api.app.RestClientFactory;
+import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.pay.api.app.RestClient;
 import uk.gov.pay.api.app.config.PublicApiConfig;
-import uk.gov.pay.api.app.config.RestClientConfig;
 import uk.gov.pay.api.auth.Account;
 import uk.gov.pay.api.ledger.service.LedgerUriGenerator;
 import uk.gov.pay.api.model.RefundResponse;
 import uk.gov.pay.api.model.RefundsResponse;
 import uk.gov.pay.api.model.TokenPaymentType;
-import uk.gov.service.payments.commons.testing.pact.consumers.Pacts;
-import uk.gov.service.payments.commons.testing.pact.consumers.PayPactProviderRule;
+import uk.gov.pay.api.utils.RestClients;
+import uk.gov.pay.api.utils.pact.PactProviderExtension;
+import uk.gov.pay.api.utils.pact.Pacts;
 
-import jakarta.ws.rs.client.Client;
 import java.util.List;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class GetPaymentRefundsServicePactTest {
 
     private static final String ACCOUNT_ID = "123456";
-    @Rule
-    public PayPactProviderRule ledgerRule = new PayPactProviderRule("ledger", this);
-    @Rule
-    public PayPactProviderRule connectorRule = new PayPactProviderRule("connector", this);
+    @RegisterExtension
+    public PactProviderExtension ledgerRule = new PactProviderExtension("ledger");
+    @RegisterExtension
+    public PactProviderExtension connectorRule = new PactProviderExtension("connector");
     @Mock
     private PublicApiConfig mockConfiguration;
     private GetPaymentRefundsService getPaymentRefundsService;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         when(mockConfiguration.getLedgerUrl()).thenReturn(ledgerRule.getUrl());
         when(mockConfiguration.getBaseUrl()).thenReturn("http://publicapi.test.localhost/");
@@ -45,14 +43,13 @@ public class GetPaymentRefundsServicePactTest {
         PublicApiUriGenerator publicApiUriGenerator = new PublicApiUriGenerator(mockConfiguration);
         LedgerUriGenerator ledgerUriGenerator = new LedgerUriGenerator(mockConfiguration);
 
-        Client client = RestClientFactory.buildClient(new RestClientConfig(false));
+        RestClient client = RestClients.newRestClient(false);
         LedgerService ledgerService = new LedgerService(client, ledgerUriGenerator);
 
         getPaymentRefundsService = new GetPaymentRefundsService(ledgerService, publicApiUriGenerator);
     }
 
     @Test
-    @PactVerification("ledger")
     @Pacts(pacts = {"publicapi-ledger-get-payment-refunds"})
     public void shouldReturnRefundsForPaymentCorrectlyFromLedger() {
         Account account = new Account(ACCOUNT_ID, TokenPaymentType.CARD, "a-token-link");

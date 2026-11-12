@@ -19,14 +19,14 @@ import uk.gov.service.payments.commons.validation.DateTimeUtils;
 import java.time.ZonedDateTime;
 import java.util.Map;
 
+import static io.micronaut.http.HttpHeaders.AUTHORIZATION;
+import static io.micronaut.http.HttpHeaders.CONTENT_TYPE;
+import static io.micronaut.http.HttpStatus.ACCEPTED;
+import static io.micronaut.http.HttpStatus.NOT_FOUND;
+import static io.micronaut.http.HttpStatus.PRECONDITION_FAILED;
+import static io.micronaut.http.MediaType.APPLICATION_JSON;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
-import static jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION;
-import static jakarta.ws.rs.core.HttpHeaders.CONTENT_TYPE;
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
-import static jakarta.ws.rs.core.Response.Status.ACCEPTED;
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
-import static jakarta.ws.rs.core.Response.Status.PRECONDITION_FAILED;
 import static java.lang.String.format;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.Matchers.hasKey;
@@ -290,7 +290,7 @@ class PaymentRefundsResourceIT extends PaymentResourceITestBase {
 
         postRefunds(payload)
                 .then()
-                .statusCode(NOT_FOUND.getStatusCode());
+                .statusCode(NOT_FOUND.getCode());
     }
 
     @Test
@@ -303,7 +303,7 @@ class PaymentRefundsResourceIT extends PaymentResourceITestBase {
 
         postRefunds(payload)
                 .then()
-                .statusCode(PRECONDITION_FAILED.getStatusCode())
+                .statusCode(PRECONDITION_FAILED.getCode())
                 .contentType(JSON)
                 .body("code", is("P0604"))
                 .body("description", is("Refund amount available mismatch."));
@@ -324,7 +324,7 @@ class PaymentRefundsResourceIT extends PaymentResourceITestBase {
 
         postRefunds(payload)
                 .then()
-                .statusCode(ACCEPTED.getStatusCode())
+                .statusCode(ACCEPTED.getCode())
                 .contentType(JSON)
                 .body("refund_id", is(REFUND_ID))
                 .body("amount", is(AMOUNT))

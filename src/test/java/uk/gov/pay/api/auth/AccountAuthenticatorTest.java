@@ -16,23 +16,22 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
+import uk.gov.pay.api.app.RestClient;
+import uk.gov.pay.api.app.RestClientResponse;
 import uk.gov.pay.api.app.config.PublicApiConfig;
+import uk.gov.pay.api.exception.ServiceUnavailableException;
 import uk.gov.pay.api.model.publicauth.AuthResponse;
 
-import jakarta.ws.rs.ServiceUnavailableException;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.Invocation;
-import jakarta.ws.rs.client.WebTarget;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION;
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
-import static jakarta.ws.rs.core.Response.Status.OK;
-import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
+import static io.micronaut.http.HttpHeaders.ACCEPT;
+import static io.micronaut.http.HttpHeaders.AUTHORIZATION;
+import static io.micronaut.http.HttpStatus.NOT_FOUND;
+import static io.micronaut.http.HttpStatus.OK;
+import static io.micronaut.http.HttpStatus.UNAUTHORIZED;
+import static io.micronaut.http.MediaType.APPLICATION_JSON;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
@@ -53,16 +52,10 @@ public class AccountAuthenticatorTest {
     private final String accountId = "accountId";
     
     @Mock
-    private Client publicAuthMock;
-    
-    @Mock
-    private WebTarget mockTarget;
-    
-    @Mock
-    private Invocation.Builder mockRequest;
-    
+    private RestClient publicAuthMock;
+
     @Mock 
-    private Response mockResponse;
+    private RestClientResponse mockResponse;
     
     @Mock
     private PublicApiConfig mockConfiguration;
@@ -81,17 +74,15 @@ public class AccountAuthenticatorTest {
         
         when(mockConfiguration.getPublicAuthUrl()).thenReturn("/v1/api/auth");
         accountAuthenticator = new AccountAuthenticator(publicAuthMock, mockConfiguration);
-        when(publicAuthMock.target("/v1/api/auth")).thenReturn(mockTarget);
-        when(mockTarget.request()).thenReturn(mockRequest);
-        when(mockRequest.header(AUTHORIZATION, "Bearer " + bearerToken)).thenReturn(mockRequest);
-        when(mockRequest.accept(MediaType.APPLICATION_JSON)).thenReturn(mockRequest);
-        when(mockRequest.get()).thenReturn(mockResponse);
+        when(publicAuthMock.get("/v1/api/auth", Map.of(
+                AUTHORIZATION, "Bearer " + bearerToken,
+                ACCEPT, APPLICATION_JSON))).thenReturn(mockResponse);
     }
 
     @Test
     public void shouldReturnValidAccount() {
         AuthResponse authResponse = new AuthResponse(accountId, "a-token-link", CARD);
-        when(mockResponse.getStatus()).thenReturn(OK.getStatusCode());
+        when(mockResponse.getStatus()).thenReturn(OK.getCode());
         when(mockResponse.readEntity(AuthResponse.class)).thenReturn(authResponse);
         Optional<Account> maybeAccount = accountAuthenticator.authenticate(bearerToken);
         assertThat(maybeAccount.get().getName(), is(accountId));
@@ -111,7 +102,7 @@ public class AccountAuthenticatorTest {
                 "token_link", "a-token-link"
         );
         JsonNode response = objectMapper.valueToTree(responseEntity);
-        when(mockResponse.getStatus()).thenReturn(UNAUTHORIZED.getStatusCode());
+        when(mockResponse.getStatus()).thenReturn(UNAUTHORIZED.getCode());
         when(mockResponse.readEntity(JsonNode.class)).thenReturn(response);
         Optional<Account> maybeAccount = accountAuthenticator.authenticate(bearerToken);
         assertThat(maybeAccount.isPresent(), is(false));
@@ -128,7 +119,7 @@ public class AccountAuthenticatorTest {
                 "error_identifier", AUTH_TOKEN_INVALID.toString()
         );
         JsonNode response = objectMapper.valueToTree(responseEntity);
-        when(mockResponse.getStatus()).thenReturn(UNAUTHORIZED.getStatusCode());
+        when(mockResponse.getStatus()).thenReturn(UNAUTHORIZED.getCode());
         when(mockResponse.readEntity(JsonNode.class)).thenReturn(response);
         Optional<Account> maybeAccount = accountAuthenticator.authenticate(bearerToken);
         assertThat(maybeAccount.isPresent(), is(false));
@@ -141,7 +132,7 @@ public class AccountAuthenticatorTest {
 
     @Test
     public void shouldThrow_ifUnknownResponse() {
-        when(mockResponse.getStatus()).thenReturn(NOT_FOUND.getStatusCode());
+        when(mockResponse.getStatus()).thenReturn(NOT_FOUND.getCode());
         assertThrows(ServiceUnavailableException.class, () -> accountAuthenticator.authenticate(bearerToken));
     }
 }

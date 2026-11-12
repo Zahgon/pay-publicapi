@@ -1,6 +1,8 @@
 package uk.gov.pay.api.service;
 
 import black.door.hate.HalRepresentation;
+import io.micronaut.http.HttpResponse;
+import io.micronaut.http.MediaType;
 import uk.gov.pay.api.auth.Account;
 import uk.gov.pay.api.model.TransactionResponse;
 import uk.gov.pay.api.model.search.PaginationDecorator;
@@ -8,7 +10,7 @@ import uk.gov.pay.api.model.search.card.PaymentForSearchResult;
 import uk.gov.pay.api.model.search.card.PaymentSearchResponse;
 
 import jakarta.inject.Inject;
-import jakarta.ws.rs.core.Response;
+import jakarta.inject.Singleton;
 import java.util.List;
 
 import static java.util.stream.Collectors.toList;
@@ -16,6 +18,7 @@ import static org.apache.hc.core5.http.HttpHeaders.CACHE_CONTROL;
 import static org.apache.hc.core5.http.HttpHeaders.PRAGMA;
 import static uk.gov.pay.api.validation.PaymentSearchValidator.validateSearchParameters;
 
+@Singleton
 public class PaymentSearchService {
 
     private static final String PAYMENTS_PATH = "/v1/payments";
@@ -33,7 +36,7 @@ public class PaymentSearchService {
         this.ledgerService = ledgerService;
     }
 
-    public Response searchLedgerPayments(Account account, PaymentSearchParams searchParams) {
+    public HttpResponse<String> searchLedgerPayments(Account account, PaymentSearchParams searchParams) {
         validateSearchParameters(searchParams);
 
         PaymentSearchResponse<TransactionResponse> paymentSearchResponse =
@@ -41,7 +44,7 @@ public class PaymentSearchService {
         return processLedgerResponse(paymentSearchResponse);
     }
 
-    private Response processLedgerResponse(PaymentSearchResponse<TransactionResponse> paymentSearchResponse) {
+    private HttpResponse<String> processLedgerResponse(PaymentSearchResponse<TransactionResponse> paymentSearchResponse) {
         List<PaymentForSearchResult> chargeFromResponses = paymentSearchResponse.getPayments()
                 .stream()
                 .map(t -> PaymentForSearchResult.valueOf(
@@ -57,13 +60,12 @@ public class PaymentSearchService {
                 .builder()
                 .addProperty("results", chargeFromResponses);
 
-        return Response.ok()
-                .header(PRAGMA, "no-cache")
-                .header(CACHE_CONTROL, "no-store")
-                .entity(paginationDecorator
+        return HttpResponse.ok(paginationDecorator
                         .decoratePagination(halRepresentation, paymentSearchResponse, PAYMENTS_PATH)
                         .build()
                         .toString())
-                .build();
+                .header(PRAGMA, "no-cache")
+                .header(CACHE_CONTROL, "no-store")
+                .contentType(MediaType.APPLICATION_JSON_TYPE);
     }
 }

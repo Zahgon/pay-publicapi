@@ -2,13 +2,15 @@ package uk.gov.pay.api.ledger.service;
 
 import uk.gov.pay.api.app.config.PublicApiConfig;
 import uk.gov.pay.api.auth.Account;
+import uk.gov.pay.api.utils.UriTemplate;
 
 import jakarta.inject.Inject;
-import jakarta.ws.rs.core.UriBuilder;
+import jakarta.inject.Singleton;
 import java.util.Map;
 
 import static java.lang.String.format;
 
+@Singleton
 public class LedgerUriGenerator {
     private final PublicApiConfig configuration;
 
@@ -24,7 +26,7 @@ public class LedgerUriGenerator {
 
     private String buildLedgerUri(String path, Map<String, String> params) {
         var ledgerUrl = configuration.getLedgerUrl();
-        UriBuilder builder = UriBuilder.fromPath(ledgerUrl).path(path);
+        UriTemplate builder = UriTemplate.fromPath(ledgerUrl).path(path);
         params.entrySet().stream()
                 .filter(k -> k.getValue() != null)
                 .forEach(k -> builder.queryParam(k.getKey(), k.getValue()));

@@ -1,30 +1,32 @@
 package uk.gov.pay.api.exception.mapper;
 
+import io.micronaut.http.HttpResponse;
+import io.micronaut.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.api.exception.GetEventsException;
 import uk.gov.pay.api.model.RequestError;
 
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.ext.ExceptionMapper;
+import jakarta.inject.Singleton;
 
-import static jakarta.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static io.micronaut.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static io.micronaut.http.HttpStatus.NOT_FOUND;
 import static uk.gov.pay.api.model.RequestError.Code.GET_PAYMENT_EVENTS_CONNECTOR_ERROR;
 import static uk.gov.pay.api.model.RequestError.Code.GET_PAYMENT_EVENTS_NOT_FOUND_ERROR;
 import static uk.gov.pay.api.model.RequestError.aRequestError;
 
-public class GetEventsExceptionMapper implements ExceptionMapper<GetEventsException> {
+@Singleton
+public class GetEventsExceptionMapper extends SafeExceptionMapper<GetEventsException> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GetEventsExceptionMapper.class);
 
     @Override
-    public Response toResponse(GetEventsException exception) {
+    protected HttpResponse<?> toResponse(GetEventsException exception) {
 
         RequestError requestError;
-        Response.Status status;
+        HttpStatus status;
 
-        if (exception.getErrorStatus() == NOT_FOUND.getStatusCode()) {
+        if (exception.getErrorStatus() == NOT_FOUND.getCode()) {
             requestError = aRequestError(GET_PAYMENT_EVENTS_NOT_FOUND_ERROR);
             status = NOT_FOUND;
         } else {
@@ -33,9 +35,6 @@ public class GetEventsExceptionMapper implements ExceptionMapper<GetEventsExcept
             LOGGER.error("Connector invalid response was {}.\n Returning http status {} with error body {}", exception.getMessage(), status, requestError);
         }
 
-        return Response
-                .status(status)
-                .entity(requestError)
-                .build();
+        return ErrorResponses.of(status, requestError);
     }
 }

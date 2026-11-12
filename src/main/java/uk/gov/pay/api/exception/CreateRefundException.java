@@ -1,10 +1,10 @@
 package uk.gov.pay.api.exception;
 
-import jakarta.ws.rs.core.Response;
+import uk.gov.pay.api.app.RestClientResponse;
 
 public class CreateRefundException extends ConnectorResponseErrorException {
 
-    public CreateRefundException(Response response) {
+    public CreateRefundException(RestClientResponse response) {
         super(response);
     }
 }

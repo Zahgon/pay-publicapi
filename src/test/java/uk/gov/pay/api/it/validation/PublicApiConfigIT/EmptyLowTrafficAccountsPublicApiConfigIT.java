@@ -1,26 +1,19 @@
 package uk.gov.pay.api.it.validation.PublicApiConfigIT;
 
-import io.dropwizard.testing.junit5.DropwizardAppExtension;
-import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import uk.gov.pay.api.app.PublicApi;
-import uk.gov.pay.api.app.config.PublicApiConfig;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import uk.gov.pay.api.app.config.RateLimiterConfig;
+import uk.gov.pay.api.it.support.PublicApiTestApp;
 
 import java.util.Collections;
 
-import static io.dropwizard.testing.ResourceHelpers.resourceFilePath;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-@ExtendWith(DropwizardExtensionsSupport.class)
 public class EmptyLowTrafficAccountsPublicApiConfigIT {
 
-    private static final DropwizardAppExtension<PublicApiConfig> EXT = new DropwizardAppExtension<>(
-            PublicApi.class,
-            resourceFilePath("config/empty-low-traffic-accounts-test-config.yaml")
-    );
+    @RegisterExtension
+    private static final PublicApiTestApp EXT = PublicApiTestApp.withConfig("config/empty-low-traffic-accounts-test-config.yaml");
 
     @Test
     void shouldParseRateLimitConfigurationForLowTrafficAccounts() {

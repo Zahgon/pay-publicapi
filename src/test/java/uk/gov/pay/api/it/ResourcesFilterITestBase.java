@@ -2,7 +2,6 @@ package uk.gov.pay.api.it;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.google.common.collect.ImmutableMap;
-import io.dropwizard.testing.DropwizardTestSupport;
 import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
 import io.restassured.response.ValidatableResponse;
@@ -12,9 +11,9 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import uk.gov.pay.api.app.PublicApi;
 import uk.gov.pay.api.app.config.PublicApiConfig;
-import uk.gov.pay.api.it.rule.RedisDockerRule;
+import uk.gov.pay.api.it.support.InMemoryRedisExtension;
+import uk.gov.pay.api.it.support.PublicApiTestApp;
 import uk.gov.pay.api.model.PaymentState;
 import uk.gov.pay.api.utils.ApiKeyGenerator;
 import uk.gov.pay.api.utils.ChargeEventBuilder;
@@ -30,11 +29,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
-import static io.dropwizard.testing.ConfigOverride.config;
-import static io.dropwizard.testing.ResourceHelpers.resourceFilePath;
+import static io.micronaut.http.HttpHeaders.AUTHORIZATION;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
-import static jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION;
 import static org.eclipse.jetty.http.HttpStatus.TOO_MANY_REQUESTS_429;
 import static org.junit.jupiter.api.Assertions.fail;
 import static uk.gov.service.payments.commons.model.CommonDateTimeFormatters.ISO_INSTANT_MILLISECOND_PRECISION;
@@ -58,7 +55,7 @@ public abstract class ResourcesFilterITestBase {
     private final ExecutorService executor = Executors.newFixedThreadPool(2);
 
     @RegisterExtension
-    private static final RedisDockerRule redisDockerRule = new RedisDockerRule();
+    private static final InMemoryRedisExtension redisDockerRule = new InMemoryRedisExtension();
 
     @RegisterExtension
     static final WireMockExtension connectorServer = WireMockExtension.newInstance()
@@ -75,21 +72,19 @@ public abstract class ResourcesFilterITestBase {
             .options(wireMockConfig().dynamicPort())
             .build();
 
-    private static DropwizardTestSupport<PublicApiConfig> app;
+    private static PublicApiTestApp app;
 
     private final PublicAuthMockClientJUnit5 publicAuthMockClient = new PublicAuthMockClientJUnit5(publicAuthServer);
 
     @BeforeAll
     static void startApp() throws Exception {
-        app = new DropwizardTestSupport<>(
-                PublicApi.class,
-                resourceFilePath("config/test-config.yaml"),
-                config("connectorUrl", connectorServer.baseUrl()),
-                config("publicAuthUrl", publicAuthServer.baseUrl() + "/v1/auth"),
-                config("redis.endpoint", redisDockerRule.getRedisUrl()),
-                config("ledgerUrl", ledgerServer.baseUrl()),
-                config("rateLimiter.noOfReq", "1"),
-                config("rateLimiter.noOfReqForPost", "1")
+        app = PublicApiTestApp.withOverrides(
+                "publicapi.connector-url", connectorServer.baseUrl(),
+                "publicapi.public-auth-url", publicAuthServer.baseUrl() + "/v1/auth",
+                "redis.endpoint", redisDockerRule.getRedisUrl(),
+                "publicapi.ledger-url", ledgerServer.baseUrl(),
+                "rate-limiter.no-of-req", "1",
+                "rate-limiter.no-of-req-for-post", "1"
         );
         app.before();
     }

@@ -1,7 +1,17 @@
 package uk.gov.pay.api.resources;
 
-import com.codahale.metrics.annotation.Timed;
-import io.dropwizard.auth.Auth;
+import io.micronaut.core.annotation.Nullable;
+import io.micronaut.http.HttpRequest;
+import io.micronaut.http.HttpResponse;
+import io.micronaut.http.MediaType;
+import io.micronaut.http.MutableHttpResponse;
+import io.micronaut.http.annotation.Consumes;
+import io.micronaut.http.annotation.Controller;
+import io.micronaut.http.annotation.Get;
+import io.micronaut.http.annotation.Header;
+import io.micronaut.http.annotation.PathVariable;
+import io.micronaut.http.annotation.Post;
+import io.micronaut.http.annotation.Produces;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -9,20 +19,22 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.annotation.Nullable;
 import org.apache.hc.core5.http.HttpStatus;
-import org.hibernate.validator.constraints.Length;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import uk.gov.pay.api.app.RestClientResponse;
 import uk.gov.pay.api.auth.Account;
 import uk.gov.pay.api.exception.CaptureChargeException;
 import uk.gov.pay.api.model.CreateCardPaymentRequest;
 import uk.gov.pay.api.model.CreatePaymentResult;
 import uk.gov.pay.api.model.CreatedPaymentWithAllLinks;
+import uk.gov.pay.api.model.IdempotencyKeyHeader;
 import uk.gov.pay.api.model.PaymentEventsResponse;
 import uk.gov.pay.api.model.RequestError;
 import uk.gov.pay.api.model.links.PaymentWithAllLinks;
 import uk.gov.pay.api.model.search.card.PaymentSearchResults;
+import uk.gov.pay.api.resources.binding.QueryParameter;
+import uk.gov.pay.api.resources.binding.RequestEntityReader;
 import uk.gov.pay.api.resources.error.ApiErrorResponse;
 import uk.gov.pay.api.service.CancelPaymentService;
 import uk.gov.pay.api.service.CapturePaymentService;
@@ -32,24 +44,12 @@ import uk.gov.pay.api.service.GetPaymentService;
 import uk.gov.pay.api.service.PaymentSearchParams;
 import uk.gov.pay.api.service.PaymentSearchService;
 import uk.gov.pay.api.service.PublicApiUriGenerator;
+import uk.gov.pay.api.validation.RequestValidator;
 
 import jakarta.inject.Inject;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Pattern;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.HeaderParam;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.QueryParam;
-import jakarta.ws.rs.core.Context;
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
 
 import static java.lang.String.format;
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.apache.hc.core5.http.HttpHeaders.CACHE_CONTROL;
 import static org.apache.hc.core5.http.HttpHeaders.PRAGMA;
 import static uk.gov.pay.api.common.ResponseConstants.RESPONSE_200_DESCRIPTION;
@@ -61,9 +61,9 @@ import static uk.gov.pay.api.common.ResponseConstants.RESPONSE_422_DESCRIPTION;
 import static uk.gov.pay.api.common.ResponseConstants.RESPONSE_429_DESCRIPTION;
 import static uk.gov.pay.api.common.ResponseConstants.RESPONSE_500_DESCRIPTION;
 
-@Path("/")
+@Controller
 @Tag(name = "Card payments")
-@Produces({"application/json"})
+@Produces(MediaType.APPLICATION_JSON)
 public class PaymentsResource {
 
     private static final Logger logger = LoggerFactory.getLogger(PaymentsResource.class);
@@ -75,6 +75,8 @@ public class PaymentsResource {
     private final CapturePaymentService capturePaymentService;
     private final CancelPaymentService cancelPaymentService;
     private final GetPaymentEventsService getPaymentEventsService;
+    private final RequestEntityReader requestEntityReader;
+    private final RequestValidator requestValidator;
 
     @Inject
     public PaymentsResource(CreatePaymentService createPaymentService,
@@ -83,7 +85,11 @@ public class PaymentsResource {
                             GetPaymentService getPaymentService,
                             CapturePaymentService capturePaymentService,
                             CancelPaymentService cancelPaymentService,
-                            GetPaymentEventsService getPaymentEventsService) {
+                            GetPaymentEventsService getPaymentEventsService,
+                            RequestEntityReader requestEntityReader,
+                            RequestValidator requestValidator) {
+        this.requestEntityReader = requestEntityReader;
+        this.requestValidator = requestValidator;
         this.createPaymentService = createPaymentService;
         this.publicApiUriGenerator = publicApiUriGenerator;
         this.paymentSearchService = paymentSearchService;
@@ -93,10 +99,8 @@ public class PaymentsResource {
         this.getPaymentEventsService = getPaymentEventsService;
     }
 
-    @GET
-    @Timed
-    @Path("/v1/payments/{paymentId}")
-    @Produces(APPLICATION_JSON)
+    @Get("/v1/payments/{paymentId}")
+    @Produces(MediaType.APPLICATION_JSON)
     @Operation(security = {@SecurityRequirement(name = "BearerAuth")},
             operationId = "Get a payment",
             summary = "Get information about a single payment",
@@ -115,26 +119,23 @@ public class PaymentsResource {
                             content = @Content(schema = @Schema(implementation = RequestError.class)))
             }
     )
-    public Response getPayment(@Parameter(hidden = true) @Auth Account account,
-                               @PathParam("paymentId")
+    public HttpResponse<PaymentWithAllLinks> getPayment(@Parameter(hidden = true) Account account,
+                               @PathVariable("paymentId")
                                @Parameter(name = "paymentId", description = "Returns the payment with the matching `payment_id`.", example = "hu20sqlact5260q2nanm0q8u93")
                                String paymentId,
-                               @Parameter(hidden = true) @HeaderParam("X-Ledger") String strategyName) {
+                               @Parameter(hidden = true) @Nullable @Header("X-Ledger") String strategyName) {
 
         var strategy = new GetOnePaymentStrategy(strategyName, account, paymentId, getPaymentService);
         PaymentWithAllLinks payment = strategy.validateAndExecute();
         
         logger.info("Payment returned - [ {} ]", payment);
-        return Response.ok(payment)
+        return HttpResponse.ok(payment)
                 .header(PRAGMA, "no-cache")
-                .header(CACHE_CONTROL, "no-store")
-                .build();
+                .header(CACHE_CONTROL, "no-store");
     }
 
-    @GET
-    @Timed
-    @Path("/v1/payments/{paymentId}/events")
-    @Produces(APPLICATION_JSON)
+    @Get("/v1/payments/{paymentId}/events")
+    @Produces(MediaType.APPLICATION_JSON)
     @Operation(security = {@SecurityRequirement(name = "BearerAuth")},
             operationId = "Get events for a payment",
             summary = "Get a payment's events",
@@ -154,11 +155,11 @@ public class PaymentsResource {
                             content = @Content(schema = @Schema(implementation = RequestError.class)))
             }
     )
-    public PaymentEventsResponse getPaymentEvents(@Parameter(hidden = true) @Auth Account account,
-                                                  @PathParam("paymentId")
+    public PaymentEventsResponse getPaymentEvents(@Parameter(hidden = true) Account account,
+                                                  @PathVariable("paymentId")
                                                   @Parameter(name = "paymentId", description = "Payment identifier", example = "hu20sqlact5260q2nanm0q8u93")
                                                   String paymentId,
-                                                  @Parameter(hidden = true) @HeaderParam("X-Ledger") String strategyName) {
+                                                  @Parameter(hidden = true) @Nullable @Header("X-Ledger") String strategyName) {
 
         var strategy = new GetPaymentEventsStrategy(strategyName, account, paymentId, getPaymentEventsService);
         PaymentEventsResponse paymentEventsResponse = strategy.validateAndExecute();
@@ -167,10 +168,8 @@ public class PaymentsResource {
         return paymentEventsResponse;
     }
 
-    @GET
-    @Timed
-    @Path("/v1/payments")
-    @Produces(APPLICATION_JSON)
+    @Get("/v1/payments")
+    @Produces(MediaType.APPLICATION_JSON)
     @Operation(security = {@SecurityRequirement(name = "BearerAuth")},
             operationId = "Search payments",
             summary = "Search payments",
@@ -190,52 +189,51 @@ public class PaymentsResource {
                             content = @Content(schema = @Schema(implementation = RequestError.class)))
             }
     )
-    public Response searchPayments(@Parameter(hidden = true)
-                                   @Auth Account account,
+    public HttpResponse<String> searchPayments(@Parameter(hidden = true)
+                                   Account account,
                                    @Parameter(description = "Returns payments with `reference` values exactly matching your specified value.")
-                                   @QueryParam("reference") String reference,
+                                   @Nullable @QueryParameter("reference") String reference,
                                    @Parameter(description = "Returns payments with matching `email` values. You can send full or partial email addresses. " +
                                            "`email` is the paying user’s email address.")
-                                   @QueryParam("email") String email,
+                                   @Nullable @QueryParameter("email") String email,
                                    @Parameter(description = "Returns payments in a matching `state`. `state` reflects where a payment is in the " +
                                            "[payment status lifecycle](https://docs.payments.service.gov.uk/api_reference/#payment-status-lifecycle).", example = "success",
                                            schema = @Schema(allowableValues = {"created", "started", "submitted", "success", "failed", "cancelled", "error"}))
-                                   @QueryParam("state") String state,
+                                   @Nullable @QueryParameter("state") String state,
                                    @Parameter(description = "Returns payments paid with a particular card brand.")
-                                   @QueryParam("card_brand") String cardBrand,
+                                   @Nullable @QueryParameter("card_brand") String cardBrand,
                                    @Parameter(description = "Returns payments created on or after the `from_date`. " +
                                            "Date and time must be coordinated Universal Time (UTC) and ISO 8601 format to second-level accuracy - `YYYY-MM-DDThh:mm:ssZ`.", example = "2015-08-13T12:35:00Z")
-                                   @QueryParam("from_date") String fromDate,
+                                   @Nullable @QueryParameter("from_date") String fromDate,
                                    @Parameter(description = "Returns payments created before the `to_date`. " +
                                            "Date and time must be coordinated Universal Time (UTC) and ISO 8601 format to second-level accuracy - `YYYY-MM-DDThh:mm:ssZ`.", example = "2015-08-13T12:35:00Z")
-                                   @QueryParam("to_date") String toDate,
+                                   @Nullable @QueryParameter("to_date") String toDate,
                                    @Parameter(description = "Returns a [specific page of results](https://docs.payments.service.gov.uk/api_reference/#pagination). Defaults to `1`.")
-                                   @QueryParam("page") String pageNumber,
+                                   @Nullable @QueryParameter("page") String pageNumber,
                                    @Parameter(description = "The number of payments returned " +
                                            "[per results page](https://docs.payments.service.gov.uk/api_reference/#pagination). Defaults to `500`. Maximum value is `500`.")
-                                   @QueryParam("display_size") String displaySize,
+                                   @Nullable @QueryParameter("display_size") String displaySize,
                                    @Parameter(description = "Returns payments paid with cards under this cardholder name.")
-                                   @QueryParam("cardholder_name") String cardHolderName,
+                                   @Nullable @QueryParameter("cardholder_name") String cardHolderName,
                                    @Parameter(description = "Returns payments paid by cards beginning with the `first_digits_card_number` value. "
                                            + "`first_digits_card_number` value must be 6 digits.")
-                                   @QueryParam("first_digits_card_number") String firstDigitsCardNumber,
+                                   @Nullable @QueryParameter("first_digits_card_number") String firstDigitsCardNumber,
                                    @Parameter(description = "Returns payments paid by cards ending with the `last_digits_card_number` value. " +
                                            "`last_digits_card_number` value must be 4 digits.")
-                                   @QueryParam("last_digits_card_number") String lastDigitsCardNumber,
+                                   @Nullable @QueryParameter("last_digits_card_number") String lastDigitsCardNumber,
                                    @Parameter(description = "Returns payments settled on or after the `from_settled_date` value. " +
                                            "You can only search by settled date if your payment service provider is Stripe. " +
                                            "Date must be in ISO 8601 format to date-level accuracy - `YYYY-MM-DD`. " +
                                            "Payments are settled when your payment service provider sends funds to your bank account.")
-                                   @QueryParam("from_settled_date") String fromSettledDate,
+                                   @Nullable @QueryParameter("from_settled_date") String fromSettledDate,
                                    @Parameter(description = "Returns payments settled before the `to_settled_date` value. " +
                                            "You can only search by settled date if your payment service provider is Stripe. " +
                                            "Date must be in ISO 8601 format to date-level accuracy - `YYYY-MM-DD`. " +
                                            "Payments are settled when your payment service provider sends funds to your bank account.")
-                                   @QueryParam("to_settled_date") String toSettledDate,
+                                   @Nullable @QueryParameter("to_settled_date") String toSettledDate,
                                    @Parameter(description = "Returns payments that were authorised using the agreement with this `agreement_id`. " +
                                            "Must be an exact match.", example = "abcefghjklmnopqr1234567890")
-                                   @QueryParam("agreement_id") String agreementId,
-                                   @Context UriInfo uriInfo) {
+                                   @Nullable @QueryParameter("agreement_id") String agreementId) {
 
         logger.info("Payments search request - [ reference: {}, email: REDACTED, status: {}, card_brand {}, fromDate: {}, toDate: {}, page: {}, display_size: {}, cardholder_name: REDACTED, first_digits_card_number: {}, last_digits_card_number: {}, from_settled_date: {}, to_settled_date: {}, agreement_id: {} ]",
                 reference, state, cardBrand, fromDate, toDate, pageNumber, displaySize, firstDigitsCardNumber, lastDigitsCardNumber, fromSettledDate, toSettledDate, agreementId);
@@ -260,11 +258,9 @@ public class PaymentsResource {
         return paymentSearchService.searchLedgerPayments(account, paymentSearchParams);
     }
 
-    @POST
-    @Timed
-    @Path("/v1/payments")
-    @Consumes(APPLICATION_JSON)
-    @Produces(APPLICATION_JSON)
+    @Post("/v1/payments")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
     @Operation(security = {@SecurityRequirement(name = "BearerAuth")},
             operationId = "Create a payment",
             summary = "Create a payment",
@@ -285,41 +281,39 @@ public class PaymentsResource {
                             content = @Content(schema = @Schema(implementation = RequestError.class)))
             }
     )
-    public Response createNewPayment(@Parameter(hidden = true) @Auth Account account,
-                                     @Parameter(required = true, description = "requestPayload")
-                                     @Valid CreateCardPaymentRequest createCardPaymentRequest,
-                                     @Nullable
-                                     @Length(min = 1, max = 255, message = "Header [Idempotency-Key] can have a size between 1 and 255")
-                                     @Pattern(regexp = "^$|^[a-zA-Z0-9-]+$", message = "Header [Idempotency-Key] can only contain alphanumeric characters and hyphens")
-                                     @HeaderParam("Idempotency-Key")
-                                     String idempotencyKey) {
+    public HttpResponse<PaymentWithAllLinks> createNewPayment(@Parameter(hidden = true) Account account,
+                                     HttpRequest<?> request,
+                                     @Parameter(description = "Idempotency key: 1 to 255 alphanumeric characters and hyphens")
+                                     @Nullable @Header("Idempotency-Key")
+                                     String idempotencyKey) throws IOException {
+        CreateCardPaymentRequest createCardPaymentRequest = requestEntityReader.read(request, CreateCardPaymentRequest.class);
+        requestValidator.validate(createCardPaymentRequest, idempotencyKey == null ? null : new IdempotencyKeyHeader(idempotencyKey));
         logger.info("Payment create request parsed to {}", createCardPaymentRequest);
 
         CreatedPaymentWithAllLinks createdPayment = createPaymentService.create(account, createCardPaymentRequest, idempotencyKey);
 
         PaymentWithAllLinks paymentWithAllLinks = createdPayment.getPayment();
-        Response.ResponseBuilder response;
+        MutableHttpResponse<PaymentWithAllLinks> response;
 
         switch (createdPayment.getWhenCreated()) {
-            case BRAND_NEW -> response = Response
-                    .created(publicApiUriGenerator.getPaymentURI(paymentWithAllLinks.getPaymentId()));
-            case EXISTING -> response = Response.ok();
+            case BRAND_NEW -> response = HttpResponse.<PaymentWithAllLinks>status(io.micronaut.http.HttpStatus.CREATED)
+                    .header("Location", publicApiUriGenerator.getPaymentURI(paymentWithAllLinks.getPaymentId()).toString());
+            case EXISTING -> response = HttpResponse.ok();
             default ->
                     throw new IllegalArgumentException(format("Unrecognised WhenCreated enum: %s", createdPayment.getWhenCreated()));
         }
 
-        response.entity(paymentWithAllLinks)
+        response.body(paymentWithAllLinks)
                 .header(PRAGMA, "no-cache")
                 .header(CACHE_CONTROL, "no-store");
 
         logger.info("Payment returned (created): [ {} ]", paymentWithAllLinks);
-        return response.build();
+        return response;
     }
 
-    @POST
-    @Timed
-    @Path("/v1/payments/{paymentId}/cancel")
-    @Produces(APPLICATION_JSON)
+    @Post("/v1/payments/{paymentId}/cancel")
+    @Consumes(MediaType.ALL)
+    @Produces(MediaType.APPLICATION_JSON)
     @Operation(security = {@SecurityRequirement(name = "BearerAuth")},
             operationId = "Cancel a payment",
             summary = "Cancel payment",
@@ -341,18 +335,17 @@ public class PaymentsResource {
                             content = @Content(schema = @Schema(implementation = RequestError.class)))
             }
     )
-    public Response cancelPayment(@Parameter(hidden = true) @Auth Account account,
-                                  @PathParam("paymentId")
+    public HttpResponse<?> cancelPayment(@Parameter(hidden = true) Account account,
+                                  @PathVariable("paymentId")
                                   @Parameter(name = "paymentId", description = "The `payment_id` of the payment you’re cancelling.", example = "hu20sqlact5260q2nanm0q8u93")
                                   String paymentId) {
 
         return cancelPaymentService.cancel(account, paymentId);
     }
 
-    @POST
-    @Timed
-    @Path("/v1/payments/{paymentId}/capture")
-    @Produces(APPLICATION_JSON)
+    @Post("/v1/payments/{paymentId}/capture")
+    @Consumes(MediaType.ALL)
+    @Produces(MediaType.APPLICATION_JSON)
     @Operation(security = {@SecurityRequirement(name = "BearerAuth")},
             operationId = "Capture a payment",
             summary = "Take a delayed payment",
@@ -374,15 +367,14 @@ public class PaymentsResource {
                             content = @Content(schema = @Schema(implementation = RequestError.class)))
             }
     )
-    public Response capturePayment(@Parameter(hidden = true) @Auth Account account,
-                                   @PathParam("paymentId")
+    public HttpResponse<?> capturePayment(@Parameter(hidden = true) Account account,
+                                   @PathVariable("paymentId")
                                    @Parameter(name = "paymentId", description = "The `payment_id` of the payment you’re capturing.", example = "hu20sqlact5260q2nanm0q8u93")
                                    String paymentId) {
-        Response connectorResponse = capturePaymentService.capture(account, paymentId);
+        RestClientResponse connectorResponse = capturePaymentService.capture(account, paymentId);
 
         if (connectorResponse.getStatus() == HttpStatus.SC_NO_CONTENT) {
-            connectorResponse.close();
-            return Response.noContent().build();
+            return HttpResponse.noContent();
         }
         throw new CaptureChargeException(connectorResponse);
     }

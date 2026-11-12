@@ -1,16 +1,13 @@
 package uk.gov.pay.api.service;
 
-import au.com.dius.pact.consumer.junit.PactVerification;
-import jakarta.ws.rs.client.Client;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
-import uk.gov.pay.api.app.RestClientFactory;
+import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.pay.api.app.RestClient;
 import uk.gov.pay.api.app.config.PublicApiConfig;
-import uk.gov.pay.api.app.config.RestClientConfig;
 import uk.gov.pay.api.auth.Account;
 import uk.gov.pay.api.exception.CreateChargeException;
 import uk.gov.pay.api.model.Address;
@@ -21,13 +18,14 @@ import uk.gov.pay.api.model.TokenPaymentType;
 import uk.gov.pay.api.model.links.Link;
 import uk.gov.pay.api.model.links.PaymentWithAllLinks;
 import uk.gov.pay.api.model.links.PostLink;
+import uk.gov.pay.api.utils.RestClients;
+import uk.gov.pay.api.utils.pact.PactProviderExtension;
+import uk.gov.pay.api.utils.pact.Pacts;
 import uk.gov.service.payments.commons.model.AgreementPaymentType;
 import uk.gov.service.payments.commons.model.AuthorisationMode;
 import uk.gov.service.payments.commons.model.ErrorIdentifier;
 import uk.gov.service.payments.commons.model.SupportedLanguage;
 import uk.gov.service.payments.commons.model.charge.ExternalMetadata;
-import uk.gov.service.payments.commons.testing.pact.consumers.Pacts;
-import uk.gov.service.payments.commons.testing.pact.consumers.PayPactProviderRule;
 
 import java.util.Collections;
 import java.util.Map;
@@ -37,39 +35,38 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.when;
 import static uk.gov.service.payments.commons.model.ErrorIdentifier.CARD_NUMBER_IN_PAYMENT_LINK_REFERENCE_REJECTED;
 import static uk.gov.service.payments.commons.model.Source.CARD_PAYMENT_LINK;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class CreatePaymentServicePactTest {
 
     private CreatePaymentService createPaymentService;
 
-    @Rule
-    public PayPactProviderRule connectorRule = new PayPactProviderRule("connector", this);
+    @RegisterExtension
+    public PactProviderExtension connectorRule = new PactProviderExtension("connector");
 
     @Mock
     private PublicApiConfig configuration;
 
     private Account account;
 
-    @Before
+    @BeforeEach
     public void setup() {
         when(configuration.getConnectorUrl()).thenReturn(connectorRule.getUrl()); // We will actually send real requests here, which will be intercepted by pact
         when(configuration.getBaseUrl()).thenReturn("http://publicapi.test.localhost/");
 
         PublicApiUriGenerator publicApiUriGenerator = new PublicApiUriGenerator(configuration);
         ConnectorUriGenerator connectorUriGenerator = new ConnectorUriGenerator(configuration);
-        Client client = RestClientFactory.buildClient(new RestClientConfig(false));
+        RestClient client = RestClients.newRestClient(false);
         createPaymentService = new CreatePaymentService(client, publicApiUriGenerator, connectorUriGenerator);
         account = new Account("123456", TokenPaymentType.CARD, "a-token-link");
     }
 
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-create-payment-with-minimum-fields"})
     public void testCreatePaymentWithMinimumFields() {
         Account account = new Account("123456", TokenPaymentType.CARD, "a-token-link");
@@ -102,7 +99,6 @@ public class CreatePaymentServicePactTest {
     }
 
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-create-payment"})
     public void testCreatePayment() {
         Map<String, Object> metadata = Map.of(
@@ -159,7 +155,6 @@ public class CreatePaymentServicePactTest {
     }
 
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-create-payment-for-disabled-account"})
     public void creating_payment_for_disabled_account_should_return_403() {
         var requestPayload = CreateCardPaymentRequestBuilder.builder()
@@ -178,7 +173,6 @@ public class CreatePaymentServicePactTest {
     }
 
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-create-payment-with-authorisation-mode-moto-api"})
     public void testCreatePaymentWithAuthorisationModeMotoApi() {
         Account account = new Account("123456", TokenPaymentType.CARD, "a-token-link");
@@ -197,7 +191,6 @@ public class CreatePaymentServicePactTest {
     }
 
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-create-payment-with-authorisation-mode-moto-api-not-allowed"})
     public void testCreatePaymentWithAuthorisationModeMotoApi_whenNotAllowedForAccount_shouldReturn422() {
         Account account = new Account("667", TokenPaymentType.CARD, "a-token-link");
@@ -216,7 +209,6 @@ public class CreatePaymentServicePactTest {
     }
 
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-create-payment-with-zero-amount-not-allowed"})
     public void creating_payment_with_zero_amount_when_not_allowed_for_account_should_return_422() {
         var requestPayload = CreateCardPaymentRequestBuilder.builder()
@@ -235,7 +227,6 @@ public class CreatePaymentServicePactTest {
     }
 
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-create-payment-with-moto-not-allowed"})
     public void creating_payment_with_moto_when_not_allowed_for_account_should_return_422() {
         var requestPayload = CreateCardPaymentRequestBuilder.builder()
@@ -255,7 +246,6 @@ public class CreatePaymentServicePactTest {
     }
 
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-create-payment-with-credentials-in-created-not-allowed"})
     public void shouldThrowExceptionWithIdentifierAccountNotLinkedToPSP_IfGatewayAccountCredentialIsNotConfiguredInConnector() {
         Account account = new Account("444", TokenPaymentType.CARD, "a-token-link");
@@ -275,7 +265,6 @@ public class CreatePaymentServicePactTest {
     }
 
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-create-payment-with-invalid-return-url"})
     public void shouldThrowExceptionWithIdentifierInvalidAttributeValue_whenReturnUrlInvalid() {
         Account account = new Account("444", TokenPaymentType.CARD, "a-token-link");
@@ -296,7 +285,6 @@ public class CreatePaymentServicePactTest {
     }
 
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-create-payment-with-missing-return-url"})
     public void shouldThrowExceptionWithIdentifierMissingMandatoryAttribute_whenReturnUrlMissing() {
         Account account = new Account("444", TokenPaymentType.CARD, "a-token-link");
@@ -316,7 +304,6 @@ public class CreatePaymentServicePactTest {
     }
 
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-create-payment-link-payment-with-card-number-in-reference"})
     public void shouldThrowExceptionWhenCardNumberIsEnteredInAReferenceForPaymentLinkPayment() {
         Account account = new Account("444", TokenPaymentType.CARD, "a-token-link");
@@ -337,7 +324,6 @@ public class CreatePaymentServicePactTest {
     }
 
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-create-payment-with-idempotency-key-200-response"})
     public void testCreatePaymentWithMatchingBodyAndSameIdempotencyKeyAsExistingPayment() {
         var idempotencyKey = "Ida the idempotency key";
@@ -367,7 +353,6 @@ public class CreatePaymentServicePactTest {
     }
 
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-create-payment-with-idempotency-key-409-response"})
     public void testCreatePaymentWithDifferentBodyAndSameIdempotencyKeyAsExistingPayment() {
         var idempotencyKey = "Ida the idempotency key";
@@ -388,7 +373,6 @@ public class CreatePaymentServicePactTest {
     }
 
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = "publicapi-connector-take-a-recurring-payment")
     public void testTakeARecurringPayment() {
         var requestPayload = CreateCardPaymentRequestBuilder.builder()

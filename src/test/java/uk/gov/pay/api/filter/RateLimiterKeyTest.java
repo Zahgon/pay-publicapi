@@ -1,5 +1,7 @@
 package uk.gov.pay.api.filter;
 
+import io.micronaut.http.HttpMethod;
+import io.micronaut.http.HttpRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -8,8 +10,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import jakarta.ws.rs.container.ContainerRequestContext;
-import jakarta.ws.rs.core.UriInfo;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -19,17 +19,6 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class RateLimiterKeyTest {
-
-    @Mock
-    private ContainerRequestContext containerRequestContext;
-
-    @Mock
-    private UriInfo uriInfo;
-
-    @BeforeEach
-    public void setUp() {
-        when(containerRequestContext.getUriInfo()).thenReturn(uriInfo);
-    }
 
     static Stream<Arguments> rateLimitParams() {
         return Stream.of(
@@ -43,10 +32,9 @@ public class RateLimiterKeyTest {
     @ParameterizedTest
     @MethodSource("rateLimitParams")
     public void returnsRateLimiterKey(String path, String method, String expectedKeyType, String expectedKey) {
-        when(uriInfo.getPath()).thenReturn(path);
-        when(containerRequestContext.getMethod()).thenReturn(method);
+        HttpRequest<?> request = HttpRequest.create(HttpMethod.valueOf(method), path);
 
-        var rateLimiterKey = RateLimiterKey.from(containerRequestContext, "account_id");
+        var rateLimiterKey = RateLimiterKey.from(request, "account_id");
         assertThat(rateLimiterKey.getKey(), is(expectedKey));
         assertThat(rateLimiterKey.getKeyType(), is(expectedKeyType));
     }

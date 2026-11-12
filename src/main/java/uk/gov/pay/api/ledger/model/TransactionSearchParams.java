@@ -1,6 +1,7 @@
 package uk.gov.pay.api.ledger.model;
 
-import jakarta.ws.rs.QueryParam;
+import uk.gov.pay.api.utils.QueryParameters;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -21,32 +22,37 @@ import static uk.gov.pay.api.common.SearchConstants.TO_SETTLED_DATE;
 
 public class TransactionSearchParams {
 
+    public static TransactionSearchParams from(QueryParameters query) {
+        TransactionSearchParams params = new TransactionSearchParams();
+        params.reference = query.getFirst("reference");
+        params.email = query.getFirst("email");
+        params.state = query.getFirst("state");
+        params.cardBrand = query.getFirst("card_brand");
+        params.fromDate = query.getFirst("from_date");
+        params.toDate = query.getFirst("to_date");
+        params.pageNumber = query.getFirst("page");
+        params.displaySize = query.getFirst("display_size");
+        params.cardHolderName = query.getFirst("cardholder_name");
+        params.firstDigitsCardNumber = query.getFirst("first_digits_card_number");
+        params.lastDigitsCardNumber = query.getFirst("last_digits_card_number");
+        params.fromSettledDate = query.getFirst("from_settled_date");
+        params.toSettledDate = query.getFirst("to_settled_date");
+        return params;
+    }
+
     private String accountId;
-    @QueryParam("reference")
     private String reference;
-    @QueryParam("email")
     private String email;
-    @QueryParam("state")
     private String state;
-    @QueryParam("card_brand")
     private String cardBrand;
-    @QueryParam("from_date")
     private String fromDate;
-    @QueryParam("to_date")
     private String toDate;
-    @QueryParam("page")
     private String pageNumber;
-    @QueryParam("display_size")
     private String displaySize;
-    @QueryParam("cardholder_name")
     private String cardHolderName;
-    @QueryParam("first_digits_card_number")
     private String firstDigitsCardNumber;
-    @QueryParam("last_digits_card_number")
     private String lastDigitsCardNumber;
-    @QueryParam("from_settled_date")
     private String fromSettledDate;
-    @QueryParam("to_settled_date")
     private String toSettledDate;
 
     public void setAccountId(String accountId) {

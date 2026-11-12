@@ -1,8 +1,7 @@
 package uk.gov.pay.api.exception;
 
 import org.junit.jupiter.api.Test;
-
-import jakarta.ws.rs.core.Response;
+import uk.gov.pay.api.app.RestClientResponse;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
@@ -20,7 +19,7 @@ public class ConnectorResponseErrorExceptionTest {
         // It doesn't matter if the connection was closed before,
         // but anyway we make sure it is when an exception of this nature is raised
 
-        Response mockResponse = mock(Response.class);
+        RestClientResponse mockResponse = mock(RestClientResponse.class);
         when(mockResponse.getStatus())
                 .thenReturn(400);
 
@@ -33,7 +32,6 @@ public class ConnectorResponseErrorExceptionTest {
 
         verify(mockResponse).getStatus();
         verify(mockResponse).readEntity(ConnectorErrorResponse.class);
-        verify(mockResponse).close();
         verifyNoMoreInteractions(mockResponse);
     }
 }

@@ -5,14 +5,16 @@ import uk.gov.pay.api.app.config.PublicApiConfig;
 import uk.gov.pay.api.exception.SearchPaymentsException;
 import uk.gov.pay.api.model.links.Link;
 import uk.gov.pay.api.model.links.SearchNavigationLinks;
+import uk.gov.pay.api.utils.UriTemplate;
 
 import jakarta.inject.Inject;
-import jakarta.ws.rs.core.UriBuilder;
+import jakarta.inject.Singleton;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Optional;
 
+@Singleton
 public class PaginationDecorator {
 
     private final String baseUrl;
@@ -70,35 +72,35 @@ public class PaginationDecorator {
     }
 
     private String transformIntoPublicUriAsString(String baseUrl, Link link, String path) throws URISyntaxException {
-        UriBuilder uriBuilder = getUriBuilder(baseUrl, link, path);
+        UriTemplate uriBuilder = getUriBuilder(baseUrl, link, path);
 
         return Optional.ofNullable(uriBuilder)
                 .map(builder -> {
                     // breaks the order of query parameters 
                     queryParametersToBeExcluded.forEach(queryParam ->
-                            uriBuilder.replaceQueryParam(queryParam, (Object[]) null));
+                            uriBuilder.removeQueryParam(queryParam));
                     return builder.build().toString();
                 })
                 .orElse(null);
     }
 
     private URI transformIntoPublicUri(String baseUrl, Link link, String path) throws URISyntaxException {
-        UriBuilder uriBuilder = getUriBuilder(baseUrl, link, path);
+        UriTemplate uriBuilder = getUriBuilder(baseUrl, link, path);
         return Optional.ofNullable(uriBuilder)
                 .map(builder -> {
                     // breaks the order of query parameters
                     queryParametersToBeExcluded.forEach(queryParam ->
-                            uriBuilder.replaceQueryParam(queryParam, (Object[]) null));
+                            uriBuilder.removeQueryParam(queryParam));
                     return builder.build();
                 })
                 .orElse(null);
     }
 
-    private UriBuilder getUriBuilder(String baseUrl, Link link, String path) throws URISyntaxException {
+    private UriTemplate getUriBuilder(String baseUrl, Link link, String path) throws URISyntaxException {
         if (link == null)
             return null;
 
-        return UriBuilder.fromUri(baseUrl)
+        return UriTemplate.fromUri(baseUrl)
                 .path(path)
                 .replaceQuery(new URI(link.getHref()).getQuery());
     }

@@ -1,16 +1,14 @@
 package uk.gov.pay.api.service;
 
-import au.com.dius.pact.consumer.junit.PactVerification;
 import org.hamcrest.Matchers;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
-import uk.gov.pay.api.app.RestClientFactory;
+import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.pay.api.app.RestClient;
 import uk.gov.pay.api.app.config.PublicApiConfig;
-import uk.gov.pay.api.app.config.RestClientConfig;
 import uk.gov.pay.api.auth.Account;
 import uk.gov.pay.api.exception.SearchDisputesException;
 import uk.gov.pay.api.ledger.service.LedgerUriGenerator;
@@ -18,21 +16,20 @@ import uk.gov.pay.api.model.TokenPaymentType;
 import uk.gov.pay.api.model.search.PaginationDecorator;
 import uk.gov.pay.api.model.search.dispute.DisputeForSearchResult;
 import uk.gov.pay.api.model.search.dispute.DisputesSearchResults;
-import uk.gov.service.payments.commons.testing.pact.consumers.Pacts;
-import uk.gov.service.payments.commons.testing.pact.consumers.PayPactProviderRule;
-
-import jakarta.ws.rs.client.Client;
+import uk.gov.pay.api.utils.RestClients;
+import uk.gov.pay.api.utils.pact.PactProviderExtension;
+import uk.gov.pay.api.utils.pact.Pacts;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasProperty;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class SearchDisputesServicePactTest {
-    @Rule
-    public PayPactProviderRule ledgerRule = new PayPactProviderRule("ledger", this);
+    @RegisterExtension
+    public PactProviderExtension ledgerRule = new PactProviderExtension("ledger");
 
     @Mock
     private PublicApiConfig mockConfiguration;
@@ -42,12 +39,12 @@ public class SearchDisputesServicePactTest {
     private static final String accountId = "123456";
     private static final String tokenLink = "a-token-link";
 
-    @Before
+    @BeforeEach
     public void setUp() {
         when(mockConfiguration.getLedgerUrl()).thenReturn(ledgerRule.getUrl());
         when(mockConfiguration.getBaseUrl()).thenReturn("http://publicapi.test.localhost/");
 
-        Client client = RestClientFactory.buildClient(new RestClientConfig(false));
+        RestClient client = RestClients.newRestClient(false);
         LedgerUriGenerator ledgerUriGenerator = new LedgerUriGenerator(mockConfiguration);
 
         service = new SearchDisputesService(new LedgerService(client, ledgerUriGenerator),
@@ -56,7 +53,6 @@ public class SearchDisputesServicePactTest {
     }
 
     @Test
-    @PactVerification({"ledger"})
     @Pacts(pacts = {"publicapi-ledger-search-disputes_by_settled_dates"})
     public void searchDisputesBySettledDatesShouldReturnFromLedger() {
         Account account = new Account(accountId, TokenPaymentType.CARD, tokenLink);
@@ -89,7 +85,6 @@ public class SearchDisputesServicePactTest {
     }
 
     @Test
-    @PactVerification({"ledger"})
     @Pacts(pacts = {"publicapi-ledger-search-disputes_by_state"})
     public void searchDisputesByStatus_ShouldReturnFromLedger_andShouldRewriteQueryParamsAndLinks() {
         Account account = new Account(accountId, TokenPaymentType.CARD, tokenLink);
@@ -121,7 +116,6 @@ public class SearchDisputesServicePactTest {
     }
 
     @Test
-    @PactVerification({"ledger"})
     @Pacts(pacts = {"publicapi-ledger-search-disputes-by-dates"})
     public void searchDisputesByDatesShouldReturnFromLedger() {
         Account account = new Account(accountId, TokenPaymentType.CARD, tokenLink);
@@ -154,7 +148,6 @@ public class SearchDisputesServicePactTest {
     }
 
     @Test
-    @PactVerification({"ledger"})
     @Pacts(pacts = {"publicapi-ledger-search-disputes-no-result"})
     public void searchDisputesNoResult() {
         Account account = new Account(accountId, TokenPaymentType.CARD, tokenLink);
@@ -174,7 +167,6 @@ public class SearchDisputesServicePactTest {
     }
 
     @Test
-    @PactVerification({"ledger"})
     @Pacts(pacts = {"publicapi-ledger-search-disputes-page-not-found"})
     public void shouldReturn404WhenSearchingWithNonExistentPageNumber() {
         Account account = new Account(accountId, TokenPaymentType.CARD, tokenLink);

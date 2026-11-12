@@ -4,14 +4,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.google.common.collect.ImmutableMap;
-import io.dropwizard.testing.DropwizardTestSupport;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import uk.gov.pay.api.app.PublicApi;
 import uk.gov.pay.api.app.config.PublicApiConfig;
 import uk.gov.pay.api.auth.Account;
+import uk.gov.pay.api.it.support.PublicApiTestApp;
 import uk.gov.pay.api.model.PaymentState;
 import uk.gov.pay.api.utils.ApiKeyGenerator;
 import uk.gov.pay.api.utils.JsonStringBuilder;
@@ -24,12 +23,10 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
-import static io.dropwizard.testing.ConfigOverride.config;
-import static io.dropwizard.testing.ResourceHelpers.resourceFilePath;
+import static io.micronaut.http.HttpHeaders.AUTHORIZATION;
+import static io.micronaut.http.MediaType.APPLICATION_JSON;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
-import static jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION;
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static java.lang.String.format;
 import static uk.gov.pay.api.model.TokenPaymentType.CARD;
 
@@ -48,19 +45,17 @@ class CachingAuthenticatorIT {
             .options(wireMockConfig().dynamicPort())
             .build();
 
-    private static DropwizardTestSupport<PublicApiConfig> app;
+    private static PublicApiTestApp app;
 
     @BeforeEach
     void setup() throws Exception {
         setUpMockForPublicAuth();
         setUpMockForConnector();
-        app = new DropwizardTestSupport<>(
-                PublicApi.class,
-                resourceFilePath("config/test-config.yaml"),
-                config("publicAuthUrl", publicAuthServer.baseUrl() + "/v1/api/auth"),
-                config("authenticationCachePolicy", "expireAfterWrite=3s"),
-                config("rateLimiter.noOfReqPerNode", "4"),
-                config("connectorUrl", connectorServer.baseUrl())
+        app = PublicApiTestApp.withOverrides(
+                "publicapi.public-auth-url", publicAuthServer.baseUrl() + "/v1/api/auth",
+                "publicapi.authentication-cache-policy", "expireAfterWrite=3s",
+                "rate-limiter.no-of-req-per-node", "4",
+                "publicapi.connector-url", connectorServer.baseUrl()
         );
         app.before();
     }

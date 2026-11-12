@@ -1,7 +1,14 @@
 package uk.gov.pay.api.agreement.resource;
 
-import com.codahale.metrics.annotation.Timed;
-import io.dropwizard.auth.Auth;
+import io.micronaut.http.HttpRequest;
+import io.micronaut.http.HttpResponse;
+import io.micronaut.http.MediaType;
+import io.micronaut.http.annotation.Consumes;
+import io.micronaut.http.annotation.Controller;
+import io.micronaut.http.annotation.Get;
+import io.micronaut.http.annotation.PathVariable;
+import io.micronaut.http.annotation.Post;
+import io.micronaut.http.annotation.Produces;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -18,22 +25,14 @@ import uk.gov.pay.api.agreement.service.AgreementsService;
 import uk.gov.pay.api.auth.Account;
 import uk.gov.pay.api.ledger.model.AgreementSearchParams;
 import uk.gov.pay.api.model.RequestError;
+import uk.gov.pay.api.resources.binding.RequestEntityReader;
 import uk.gov.pay.api.resources.error.ApiErrorResponse;
+import uk.gov.pay.api.utils.QueryParameters;
+import uk.gov.pay.api.validation.RequestValidator;
 
 import jakarta.inject.Inject;
-import jakarta.validation.Valid;
-import jakarta.ws.rs.BeanParam;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.Response;
+import java.io.IOException;
 
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
-import static org.apache.hc.core5.http.HttpStatus.SC_CREATED;
-import static org.apache.hc.core5.http.HttpStatus.SC_NO_CONTENT;
 import static uk.gov.pay.api.common.ResponseConstants.RESPONSE_200_DESCRIPTION;
 import static uk.gov.pay.api.common.ResponseConstants.RESPONSE_201_DESCRIPTION;
 import static uk.gov.pay.api.common.ResponseConstants.RESPONSE_400_DESCRIPTION;
@@ -43,24 +42,28 @@ import static uk.gov.pay.api.common.ResponseConstants.RESPONSE_422_DESCRIPTION;
 import static uk.gov.pay.api.common.ResponseConstants.RESPONSE_429_DESCRIPTION;
 import static uk.gov.pay.api.common.ResponseConstants.RESPONSE_500_DESCRIPTION;
 
-@Path("/")
+@Controller
 @Tag(name = "Agreements")
-@Produces({"application/json"})
+@Produces(MediaType.APPLICATION_JSON)
 public class AgreementsApiResource {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AgreementsApiResource.class);
 
     private final AgreementsService agreementsService;
+    private final RequestEntityReader requestEntityReader;
+    private final RequestValidator requestValidator;
 
     @Inject
-    public AgreementsApiResource(AgreementsService agreementsService) {
+    public AgreementsApiResource(AgreementsService agreementsService, RequestEntityReader requestEntityReader,
+                                 RequestValidator requestValidator) {
         this.agreementsService = agreementsService;
+        this.requestEntityReader = requestEntityReader;
+        this.requestValidator = requestValidator;
     }
 
-    @POST
-    @Path("/v1/agreements")
-    @Produces(APPLICATION_JSON)
-    @Consumes(APPLICATION_JSON)
+    @Post("/v1/agreements")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
     @Operation(security = {@SecurityRequirement(name = "BearerAuth")},
             operationId = "Create an agreement",
             summary = "Create an agreement for recurring payments",
@@ -81,23 +84,21 @@ public class AgreementsApiResource {
                             content = @Content(schema = @Schema(implementation = RequestError.class)))
             }
     )
-    public Response createAgreement(
-            @Parameter(hidden = true) @Auth Account account,
-            @Parameter(required = true, description = "requestPayload")
-            @Valid CreateAgreementRequest createAgreementRequest)
-    {
+    public HttpResponse<Agreement> createAgreement(
+            @Parameter(hidden = true) Account account, HttpRequest<?> request) throws IOException {
+        CreateAgreementRequest createAgreementRequest = requestEntityReader.read(request, CreateAgreementRequest.class);
+        requestValidator.validate(createAgreementRequest);
         LOGGER.info("Creating new agreement for reference {} and gateway accountID {}", 
                 createAgreementRequest.getReference(), account.accountId());
         var agreementCreatedResponse = agreementsService.createAgreement(account, createAgreementRequest);
         var agreementLedgerResponse = agreementsService.getAgreement(account, agreementCreatedResponse.getAgreementId());
         
         LOGGER.info("Agreement returned (created): [ {} ]", agreementCreatedResponse);
-        return Response.status(SC_CREATED).entity(Agreement.from(agreementLedgerResponse)).build();
+        return HttpResponse.created(Agreement.from(agreementLedgerResponse));
     }
 
-    @GET
-    @Path("/v1/agreements/{agreementId}")
-    @Produces(APPLICATION_JSON)
+    @Get("/v1/agreements/{agreementId}")
+    @Produces(MediaType.APPLICATION_JSON)
     @Operation(security = {@SecurityRequirement(name = "BearerAuth")},
             operationId = "Get an agreement",
             summary = "Get information about a single agreement for recurring payments",
@@ -116,8 +117,8 @@ public class AgreementsApiResource {
             }
     )
     public Agreement getAgreement(
-            @Parameter(hidden = true) @Auth Account account,
-            @PathParam("agreementId") 
+            @Parameter(hidden = true) Account account,
+            @PathVariable("agreementId") 
             @Parameter(name = "agreementId", 
                     description = "Returns the agreement with the matching `agreement_id`. " +
                             "GOV.UK Pay generated an `agreement_id` when you created the agreement.", 
@@ -128,10 +129,8 @@ public class AgreementsApiResource {
         return Agreement.from(agreementLedgerResponse);
     }
 
-    @GET
-    @Timed
-    @Path("/v1/agreements")
-    @Produces(APPLICATION_JSON)
+    @Get("/v1/agreements")
+    @Produces(MediaType.APPLICATION_JSON)
     @Operation(security = {@SecurityRequirement(name = "BearerAuth")},
             operationId = "Search agreements",
             summary = "Search agreements for recurring payments",
@@ -153,13 +152,14 @@ public class AgreementsApiResource {
                             content = @Content(schema = @Schema(implementation = RequestError.class)))
             }
     )
-    public AgreementSearchResults getAgreements(@Parameter(hidden = true) @Auth Account account, @BeanParam AgreementSearchParams searchParams) {
+    public AgreementSearchResults getAgreements(@Parameter(hidden = true) Account account, HttpRequest<?> request) {
+        AgreementSearchParams searchParams = AgreementSearchParams.from(QueryParameters.of(request));
         return agreementsService.searchAgreements(account, searchParams);
     }
 
-    @POST
-    @Path("/v1/agreements/{agreementId}/cancel")
-    @Produces(APPLICATION_JSON)
+    @Post("/v1/agreements/{agreementId}/cancel")
+    @Consumes(MediaType.ALL)
+    @Produces(MediaType.APPLICATION_JSON)
     @Operation(security = {@SecurityRequirement(name = "BearerAuth")},
             operationId = "Cancel an agreement",
             summary = "Cancel an agreement for recurring payments",
@@ -178,12 +178,12 @@ public class AgreementsApiResource {
                             content = @Content(schema = @Schema(implementation = RequestError.class)))
             }
     )
-    public Response cancelAgreement(@Parameter(hidden = true) @Auth Account account, @PathParam("agreementId") @Parameter(name = "agreementId",
+    public HttpResponse<?> cancelAgreement(@Parameter(hidden = true) Account account, @PathVariable("agreementId") @Parameter(name = "agreementId",
             description = "The `agreement_id` of the agreement you are cancelling",
             example = "cgc1ocvh0pt9fqs0ma67r42l58") String agreementId)
     {
         agreementsService.cancelAgreement(account, agreementId);
-        return Response.status(SC_NO_CONTENT).build();
+        return HttpResponse.noContent();
     }
 
 }

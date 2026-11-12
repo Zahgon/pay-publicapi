@@ -2,7 +2,7 @@ package uk.gov.pay.api.utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.google.common.collect.ImmutableMap;
 import uk.gov.pay.api.auth.Account;
 
@@ -12,12 +12,12 @@ import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
-import static jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION;
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
+import static io.micronaut.http.HttpHeaders.AUTHORIZATION;
+import static io.micronaut.http.MediaType.APPLICATION_JSON;
 
 public class WiremockStubbing {
     
-    public static void stubPublicAuthV1ApiAuth(WireMockRule wireMockRule, Account account, String token) throws JsonProcessingException {
+    public static void stubPublicAuthV1ApiAuth(WireMockExtension wireMockRule, Account account, String token) throws JsonProcessingException {
         Map<String, String> entity = ImmutableMap.of("account_id", account.accountId(), "token_type", account.paymentType().name());
         String json = new ObjectMapper().writeValueAsString(entity);
         wireMockRule.stubFor(get(urlEqualTo("/v1/api/auth"))

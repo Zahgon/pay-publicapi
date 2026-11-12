@@ -1,36 +1,35 @@
 package uk.gov.pay.api.exception.mapper;
 
+import io.micronaut.http.HttpResponse;
+import io.micronaut.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.api.exception.SearchDisputesException;
 import uk.gov.pay.api.model.RequestError;
 
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.ext.ExceptionMapper;
+import jakarta.inject.Singleton;
 
-import static jakarta.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static io.micronaut.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static io.micronaut.http.HttpStatus.NOT_FOUND;
 import static uk.gov.pay.api.model.RequestError.Code.GET_DISPUTE_LEDGER_ERROR;
 import static uk.gov.pay.api.model.RequestError.Code.SEARCH_DISPUTES_NOT_FOUND;
 import static uk.gov.pay.api.model.RequestError.aRequestError;
 
-public class SearchDisputesExceptionMapper implements ExceptionMapper<SearchDisputesException> {
+@Singleton
+public class SearchDisputesExceptionMapper extends SafeExceptionMapper<SearchDisputesException> {
     private static final Logger LOGGER = LoggerFactory.getLogger(SearchDisputesExceptionMapper.class);
 
     @Override
-    public Response toResponse(SearchDisputesException exception) {
-        if (exception.getErrorStatus() == NOT_FOUND.getStatusCode()) {
+    protected HttpResponse<?> toResponse(SearchDisputesException exception) {
+        if (exception.getErrorStatus() == NOT_FOUND.getCode()) {
             return buildResponse(exception, SEARCH_DISPUTES_NOT_FOUND, NOT_FOUND);
         }
         return buildResponse(exception, GET_DISPUTE_LEDGER_ERROR, INTERNAL_SERVER_ERROR);
     }
 
-    private Response buildResponse(SearchDisputesException exception, RequestError.Code connectorError, Response.Status status) {
+    private HttpResponse<?> buildResponse(SearchDisputesException exception, RequestError.Code connectorError, HttpStatus status) {
         RequestError requestError = aRequestError(connectorError);
         LOGGER.info("Ledger response was {}.\n Returning http status {} with error body {}", exception.getMessage(), status, requestError);
-        return Response
-                .status(status)
-                .entity(requestError)
-                .build();
+        return ErrorResponses.of(status, requestError);
     }
 }

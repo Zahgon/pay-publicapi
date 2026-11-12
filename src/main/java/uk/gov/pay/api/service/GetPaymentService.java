@@ -6,8 +6,10 @@ import uk.gov.pay.api.model.Charge;
 import uk.gov.pay.api.model.links.PaymentWithAllLinks;
 
 import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.net.URI;
 
+@Singleton
 public class GetPaymentService {
 
     private final PublicApiUriGenerator publicApiUriGenerator;

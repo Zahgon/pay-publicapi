@@ -11,9 +11,9 @@ import uk.gov.pay.api.utils.mocks.ConnectorMockClientJUnit5;
 import uk.gov.pay.api.utils.mocks.CreateAgreementRequestParams;
 import uk.gov.pay.api.utils.mocks.LedgerMockClientJUnit5;
 
+import static io.micronaut.http.HttpHeaders.AUTHORIZATION;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
-import static jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION;
 import static org.apache.commons.lang3.RandomStringUtils.random;
 import static org.hamcrest.core.Is.is;
 import static uk.gov.pay.api.model.TokenPaymentType.CARD;

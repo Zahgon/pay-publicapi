@@ -1,56 +1,56 @@
 package uk.gov.pay.api.filter;
 
+import io.micronaut.core.order.Ordered;
+import io.micronaut.http.HttpRequest;
+import io.micronaut.http.annotation.RequestFilter;
+import io.micronaut.http.annotation.ServerFilter;
+import io.micronaut.http.filter.ServerFilterPhase;
+import io.micronaut.web.router.RouteAttributes;
+import io.micronaut.web.router.UriRouteMatch;
 import org.slf4j.MDC;
 import uk.gov.pay.api.auth.Account;
+import uk.gov.pay.api.auth.AccountArgumentBinder;
 
-import jakarta.annotation.Priority;
-import jakarta.ws.rs.Priorities;
-import jakarta.ws.rs.container.ContainerRequestContext;
-import jakarta.ws.rs.container.ContainerRequestFilter;
-import jakarta.ws.rs.ext.Provider;
-import java.security.Principal;
 import java.util.Optional;
 
 import static org.apache.commons.lang3.StringUtils.EMPTY;
-import static uk.gov.service.payments.logging.LoggingKeys.AGREEMENT_EXTERNAL_ID;
-import static uk.gov.service.payments.logging.LoggingKeys.GATEWAY_ACCOUNT_ID;
-import static uk.gov.service.payments.logging.LoggingKeys.PAYMENT_EXTERNAL_ID;
-import static uk.gov.service.payments.logging.LoggingKeys.REFUND_EXTERNAL_ID;
-import static uk.gov.service.payments.logging.LoggingKeys.REMOTE_ADDRESS;
+import static uk.gov.pay.api.utils.LoggingKeys.AGREEMENT_EXTERNAL_ID;
+import static uk.gov.pay.api.utils.LoggingKeys.GATEWAY_ACCOUNT_ID;
+import static uk.gov.pay.api.utils.LoggingKeys.PAYMENT_EXTERNAL_ID;
+import static uk.gov.pay.api.utils.LoggingKeys.REFUND_EXTERNAL_ID;
+import static uk.gov.pay.api.utils.LoggingKeys.REMOTE_ADDRESS;
 
-@Provider
-@Priority(Priorities.USER)
-public class LoggingMDCRequestFilter implements ContainerRequestFilter {
+/**
+ * Puts the account, client address and the ids in the path of each request into the logging context.
+ */
+@ServerFilter(ServerFilter.MATCH_ALL_PATTERN)
+public class LoggingMDCRequestFilter implements Ordered {
 
-    @Override
-    public void filter(ContainerRequestContext requestContext) {
-        Optional<Account> mayBeAccount = getAccount(requestContext);
+    @RequestFilter
+    public void filter(HttpRequest<?> request) {
+        Optional<Account> mayBeAccount = request.getAttribute(AccountArgumentBinder.ACCOUNT_ATTRIBUTE, Account.class);
         MDC.put(GATEWAY_ACCOUNT_ID, mayBeAccount.map(Account::getName).orElse(EMPTY));
         mayBeAccount.ifPresent(account -> MDC.put("token_link", account.tokenLink()));
 
-        String clientAddress = getClientAddress(requestContext);
-        MDC.put(REMOTE_ADDRESS, clientAddress);
-
-        getPathParameterFromRequest("paymentId", requestContext)
-                .ifPresent(paymentId -> MDC.put(PAYMENT_EXTERNAL_ID, paymentId));
-        getPathParameterFromRequest("refundId", requestContext)
-                .ifPresent(refundId -> MDC.put(REFUND_EXTERNAL_ID, refundId));
-        getPathParameterFromRequest("agreementId", requestContext)
-                .ifPresent(agreementId -> MDC.put(AGREEMENT_EXTERNAL_ID, agreementId));
-    }
-
-    private String getClientAddress(ContainerRequestContext requestContext) {
-        return Optional.ofNullable(requestContext.getHeaderString("X-Forwarded-For"))
+        String clientAddress = Optional.ofNullable(request.getHeaders().get("X-Forwarded-For"))
                 .map(forwarded -> forwarded.split(",")[0])
                 .orElse(null);
+        MDC.put(REMOTE_ADDRESS, clientAddress);
+
+        getPathParameterFromRequest("paymentId", request).ifPresent(paymentId -> MDC.put(PAYMENT_EXTERNAL_ID, paymentId));
+        getPathParameterFromRequest("refundId", request).ifPresent(refundId -> MDC.put(REFUND_EXTERNAL_ID, refundId));
+        getPathParameterFromRequest("agreementId", request).ifPresent(agreementId -> MDC.put(AGREEMENT_EXTERNAL_ID, agreementId));
     }
 
-    private Optional<String> getPathParameterFromRequest(String parameterName, ContainerRequestContext requestContext) {
-        return Optional.ofNullable(requestContext.getUriInfo().getPathParameters().getFirst(parameterName));
+    private Optional<String> getPathParameterFromRequest(String parameterName, HttpRequest<?> request) {
+        return RouteAttributes.getRouteMatch(request)
+                .filter(UriRouteMatch.class::isInstance)
+                .map(match -> ((UriRouteMatch<?, ?>) match).getVariableValues().get(parameterName))
+                .map(Object::toString);
     }
 
-    private Optional<Account> getAccount(ContainerRequestContext requestContext) {
-        Optional<Principal> userPrincipal = Optional.ofNullable(requestContext.getSecurityContext().getUserPrincipal());
-        return userPrincipal.map(principal -> (Account) principal);
+    @Override
+    public int getOrder() {
+        return ServerFilterPhase.SECURITY.after();
     }
 }

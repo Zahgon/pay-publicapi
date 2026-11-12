@@ -1,5 +1,6 @@
 package uk.gov.pay.api.exception.mapper;
 
+import io.micronaut.http.HttpResponse;
 import org.eclipse.jetty.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -7,21 +8,20 @@ import uk.gov.pay.api.exception.CreateAgreementException;
 import uk.gov.pay.api.model.RequestError;
 import uk.gov.service.payments.commons.model.ErrorIdentifier;
 
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.ext.ExceptionMapper;
+import jakarta.inject.Singleton;
 
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
-import static jakarta.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static io.micronaut.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.pay.api.model.RequestError.Code.CREATE_AGREEMENT_CONNECTOR_ERROR;
 import static uk.gov.pay.api.model.RequestError.Code.CREATE_PAYMENT_CONNECTOR_ERROR;
 import static uk.gov.pay.api.model.RequestError.aRequestError;
 
-public class CreateAgreementExceptionMapper implements ExceptionMapper<CreateAgreementException> {
+@Singleton
+public class CreateAgreementExceptionMapper extends SafeExceptionMapper<CreateAgreementException> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CreateAgreementExceptionMapper.class);
    
     @Override
-    public Response toResponse(CreateAgreementException exception) {
+    protected HttpResponse<?> toResponse(CreateAgreementException exception) {
         RequestError requestError;
         int statusCode = HttpStatus.INTERNAL_SERVER_ERROR_500;
         
@@ -35,6 +35,6 @@ public class CreateAgreementExceptionMapper implements ExceptionMapper<CreateAgr
                     exception.getMessage(), INTERNAL_SERVER_ERROR, requestError);
         }
         
-        return Response.status(statusCode).entity(requestError).build();
+        return ErrorResponses.of(statusCode, requestError);
     }
 }

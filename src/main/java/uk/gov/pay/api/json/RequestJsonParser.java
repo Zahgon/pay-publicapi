@@ -2,15 +2,11 @@ package uk.gov.pay.api.json;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.Validation;
-import jakarta.validation.Validator;
-import jakarta.ws.rs.WebApplicationException;
-import jakarta.ws.rs.core.Response;
 import org.apache.commons.lang3.StringUtils;
 import uk.gov.pay.api.agreement.model.CreateAgreementRequest;
 import uk.gov.pay.api.exception.BadRequestException;
 import uk.gov.pay.api.exception.PaymentValidationException;
+import uk.gov.pay.api.exception.UnprocessableEntityException;
 import uk.gov.pay.api.model.CreateAgreementRequestBuilder;
 import uk.gov.pay.api.model.CreateCardPaymentRequest;
 import uk.gov.pay.api.model.CreateCardPaymentRequestBuilder;
@@ -23,6 +19,9 @@ import uk.gov.service.payments.commons.model.Source;
 import uk.gov.service.payments.commons.model.SupportedLanguage;
 import uk.gov.service.payments.commons.model.charge.ExternalMetadata;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
@@ -30,7 +29,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
-import static org.apache.hc.core5.http.HttpStatus.SC_UNPROCESSABLE_ENTITY;
 import static uk.gov.pay.api.agreement.model.CreateAgreementRequest.USER_IDENTIFIER_FIELD;
 import static uk.gov.pay.api.model.CreateCardPaymentRequest.AGREEMENT_ID_FIELD_NAME;
 import static uk.gov.pay.api.model.CreateCardPaymentRequest.AGREEMENT_PAYMENT_TYPE;
@@ -177,7 +175,7 @@ class RequestJsonParser {
         try {
             return SupportedLanguage.fromIso639AlphaTwoCode(language);
         } catch (IllegalArgumentException e) {
-            throw new WebApplicationException(Response.status(SC_UNPROCESSABLE_ENTITY).entity(requestError).build());
+            throw new UnprocessableEntityException(requestError);
         }
     }
 
@@ -313,13 +311,13 @@ class RequestJsonParser {
         } catch (IllegalArgumentException e) {
             RequestError requestError = aRequestError(METADATA, CREATE_PAYMENT_VALIDATION_ERROR,
                     "Must be an object of JSON key-value pairs");
-            throw new WebApplicationException(Response.status(SC_UNPROCESSABLE_ENTITY).entity(requestError).build());
+            throw new UnprocessableEntityException(requestError);
         }
 
         if (metadataMap == null) {
             RequestError requestError = aRequestError(METADATA, CREATE_PAYMENT_VALIDATION_ERROR,
                     "Value must not be null");
-            throw new WebApplicationException(Response.status(SC_UNPROCESSABLE_ENTITY).entity(requestError).build());
+            throw new UnprocessableEntityException(requestError);
         }
 
         ExternalMetadata metadata = new ExternalMetadata(metadataMap);
@@ -331,7 +329,7 @@ class RequestJsonParser {
                     .map(StringUtils::capitalize)
                     .collect(Collectors.joining(". "));
             RequestError requestError = aRequestError(METADATA, CREATE_PAYMENT_VALIDATION_ERROR, message);
-            throw new WebApplicationException(Response.status(SC_UNPROCESSABLE_ENTITY).entity(requestError).build());
+            throw new UnprocessableEntityException(requestError);
         }
         return metadata;
     }
@@ -388,7 +386,7 @@ class RequestJsonParser {
                     }
                     throw new BadRequestException(requestError);
                 } catch (IllegalArgumentException e) {
-                    throw new WebApplicationException(Response.status(SC_UNPROCESSABLE_ENTITY).entity(requestError).build());
+                    throw new UnprocessableEntityException(requestError);
                 }
             }
         }

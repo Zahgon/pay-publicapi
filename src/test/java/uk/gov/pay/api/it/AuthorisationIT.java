@@ -4,9 +4,9 @@ import org.apache.hc.core5.http.HttpStatus;
 import org.junit.jupiter.api.Test;
 import uk.gov.pay.api.utils.PublicAuthMockClientJUnit5;
 
+import static io.micronaut.http.HttpHeaders.AUTHORIZATION;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
-import static jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION;
 import static uk.gov.pay.api.utils.Payloads.aSuccessfulPaymentPayload;
 
 class AuthorisationIT extends PaymentResourceITestBase {

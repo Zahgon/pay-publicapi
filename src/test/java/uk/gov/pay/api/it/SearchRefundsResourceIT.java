@@ -1,6 +1,5 @@
 package uk.gov.pay.api.it;
 
-
 import io.restassured.response.ValidatableResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,9 +12,9 @@ import uk.gov.service.payments.commons.validation.DateTimeUtils;
 import java.time.ZonedDateTime;
 import java.util.Map;
 
+import static io.micronaut.http.HttpHeaders.AUTHORIZATION;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
-import static jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.Is.is;
 import static uk.gov.pay.api.utils.Urls.paymentLocationFor;

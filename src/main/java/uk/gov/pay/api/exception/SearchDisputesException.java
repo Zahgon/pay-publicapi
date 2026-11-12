@@ -1,10 +1,10 @@
 package uk.gov.pay.api.exception;
 
-import jakarta.ws.rs.core.Response;
+import uk.gov.pay.api.app.RestClientResponse;
 
 public class SearchDisputesException extends ConnectorResponseErrorException {
 
-    public SearchDisputesException(Response response) {
+    public SearchDisputesException(RestClientResponse response) {
         super(response);
     }
 

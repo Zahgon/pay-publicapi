@@ -8,9 +8,9 @@ import uk.gov.pay.api.it.telephone.TelephonePaymentResourceITBase;
 import uk.gov.pay.api.model.TokenPaymentType;
 import uk.gov.pay.api.utils.PublicAuthMockClientJUnit5;
 
+import static io.micronaut.http.HttpHeaders.AUTHORIZATION;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
-import static jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION;
 import static java.lang.String.format;
 import static org.hamcrest.core.Is.is;
 

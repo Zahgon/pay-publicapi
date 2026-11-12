@@ -1,17 +1,18 @@
 package uk.gov.pay.api.exception.mapper;
 
+import io.micronaut.http.HttpResponse;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.pay.api.app.RestClientResponse;
 import uk.gov.pay.api.exception.CancelAgreementException;
 import uk.gov.pay.api.exception.ConnectorResponseErrorException.ConnectorErrorResponse;
 import uk.gov.pay.api.model.RequestError;
 import uk.gov.service.payments.commons.model.ErrorIdentifier;
 
-import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -27,7 +28,7 @@ import static uk.gov.service.payments.commons.model.ErrorIdentifier.GENERIC;
 class CancelAgreementExceptionMapperTest {
 
     @Mock
-    private Response mockResponse;
+    private RestClientResponse mockResponse;
 
     private final CancelAgreementExceptionMapper mapper = new CancelAgreementExceptionMapper();
 
@@ -38,11 +39,11 @@ class CancelAgreementExceptionMapperTest {
         when(mockResponse.getStatus()).thenReturn(statusCodeFromConnector);
         when(mockResponse.readEntity(ConnectorErrorResponse.class)).thenReturn(new ConnectorErrorResponse(errorIdentifierFromConnector, List.of()));
 
-        Response returnedResponse = mapper.toResponse(new CancelAgreementException(mockResponse));
+        HttpResponse<?> returnedResponse = mapper.handle(null, new CancelAgreementException(mockResponse));
 
-        assertThat(returnedResponse.getStatus(), is(expectedStatusCode));
+        assertThat(returnedResponse.code(), is(expectedStatusCode));
 
-        RequestError returnedError = (RequestError) returnedResponse.getEntity();
+        RequestError returnedError = (RequestError) returnedResponse.body();
         assertThat(returnedError.getDescription(), is(expectedDescription));
         assertThat(returnedError.getCode(), is(expectedErrorCode));
     }

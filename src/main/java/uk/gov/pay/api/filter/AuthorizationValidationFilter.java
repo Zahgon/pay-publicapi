@@ -7,7 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.api.app.config.PublicApiConfig;
 
-import jakarta.inject.Inject;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.FilterConfig;
@@ -22,9 +21,8 @@ import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.Optional;
 
-import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static net.logstash.logback.argument.StructuredArguments.kv;
-import static uk.gov.service.payments.logging.LoggingKeys.REMOTE_ADDRESS;
+import static uk.gov.pay.api.utils.LoggingKeys.REMOTE_ADDRESS;
 
 public class AuthorizationValidationFilter implements Filter {
 
@@ -39,7 +37,6 @@ public class AuthorizationValidationFilter implements Filter {
     
     private String apiKeyHmacSecret;
 
-    @Inject
     public AuthorizationValidationFilter(PublicApiConfig configuration) {
         this.apiKeyHmacSecret = configuration.getApiKeyHmacSecret();
     }
@@ -65,7 +62,7 @@ public class AuthorizationValidationFilter implements Filter {
         if (isValidAuthorizationHeader(authorization, clientAddress)) {
             chain.doFilter(request, response);
         } else {
-            ((HttpServletResponse) response).sendError(UNAUTHORIZED.getStatusCode(), UNAUTHORIZED.getReasonPhrase());
+            ((HttpServletResponse) response).sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
         }
     }
 

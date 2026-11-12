@@ -1,40 +1,37 @@
 package uk.gov.pay.api.service;
 
-import au.com.dius.pact.consumer.junit.PactVerification;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
-import uk.gov.pay.api.app.RestClientFactory;
+import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.pay.api.app.RestClient;
 import uk.gov.pay.api.app.config.PublicApiConfig;
-import uk.gov.pay.api.app.config.RestClientConfig;
 import uk.gov.pay.api.auth.Account;
 import uk.gov.pay.api.exception.SearchRefundsException;
 import uk.gov.pay.api.ledger.service.LedgerUriGenerator;
 import uk.gov.pay.api.model.TokenPaymentType;
 import uk.gov.pay.api.model.search.PaginationDecorator;
 import uk.gov.pay.api.model.search.card.SearchRefundsResults;
-import uk.gov.service.payments.commons.testing.pact.consumers.Pacts;
-import uk.gov.service.payments.commons.testing.pact.consumers.PayPactProviderRule;
-
-import jakarta.ws.rs.client.Client;
+import uk.gov.pay.api.utils.RestClients;
+import uk.gov.pay.api.utils.pact.PactProviderExtension;
+import uk.gov.pay.api.utils.pact.Pacts;
 
 import static java.lang.String.format;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasProperty;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class SearchRefundsServicePactTest {
 
-    @Rule
-    public PayPactProviderRule connectorRule = new PayPactProviderRule("connector", this);
-    @Rule
-    public PayPactProviderRule ledgerRule = new PayPactProviderRule("ledger", this);
+    @RegisterExtension
+    public PactProviderExtension connectorRule = new PactProviderExtension("connector");
+    @RegisterExtension
+    public PactProviderExtension ledgerRule = new PactProviderExtension("ledger");
     @Mock
     private PublicApiConfig mockConfiguration;
 
@@ -42,12 +39,12 @@ public class SearchRefundsServicePactTest {
     private String ACCOUNT_ID = "888";
     private static final String tokenLink = "a-token-link";
 
-    @Before
+    @BeforeEach
     public void setUp() {
         when(mockConfiguration.getLedgerUrl()).thenReturn(ledgerRule.getUrl());
         when(mockConfiguration.getBaseUrl()).thenReturn("http://publicapi.test.localhost/");
 
-        Client client = RestClientFactory.buildClient(new RestClientConfig(false));
+        RestClient client = RestClients.newRestClient(false);
         LedgerUriGenerator ledgerUriGenerator = new LedgerUriGenerator(mockConfiguration);
 
         searchRefundsService = new SearchRefundsService(
@@ -57,7 +54,6 @@ public class SearchRefundsServicePactTest {
     }
 
     @Test
-    @PactVerification({"ledger"})
     @Pacts(pacts = {"publicapi-ledger-search-refunds"})
     public void getAllRefundsShouldReturnFromLedger() {
         RefundsParams params = new RefundsParams("2018-09-21T13:22:55Z", "2018-10-23T13:24:55Z", "1", "500", null, null);
@@ -95,7 +91,6 @@ public class SearchRefundsServicePactTest {
     }
 
     @Test
-    @PactVerification({"ledger"})
     @Pacts(pacts = {"publicapi-ledger-search-refunds-display-size-two"})
     public void shouldSearchForAllExistingRefundsWithDisplaySizeTwo() {
         String accountId = "777";
@@ -109,7 +104,6 @@ public class SearchRefundsServicePactTest {
     }
 
     @Test
-    @PactVerification({"ledger"})
     @Pacts(pacts = {"publicapi-ledger-search-refunds-with-page-and-display-when-no-refunds-exist"})
     public void getAllRefundsShouldReturnNoRefundsFromLedgerWhenThereAreNone() {
         Account account = new Account(ACCOUNT_ID, TokenPaymentType.CARD, tokenLink);
@@ -121,7 +115,6 @@ public class SearchRefundsServicePactTest {
     }
 
     @Test
-    @PactVerification({"ledger"})
     @Pacts(pacts = {"publicapi-ledger-search-refunds-page-not-found"})
     public void shouldReturn404WhenSearchingWithNonExistentPageNumber() {
         Account account = new Account(ACCOUNT_ID, TokenPaymentType.CARD, tokenLink);
@@ -134,7 +127,6 @@ public class SearchRefundsServicePactTest {
     }
 
     @Test
-    @PactVerification({"ledger"})
     @Pacts(pacts = {"publicapi-ledger-search-refunds_with_settled_dates"})
     public void shouldReturnARefundWhenSearchingWithSettledDates() {
         String accountId = "123456";

@@ -1,8 +1,9 @@
 package uk.gov.pay.api.exception;
-import jakarta.ws.rs.core.Response;
+
+import uk.gov.pay.api.app.RestClientResponse;
 
 public class CreateAgreementException extends ConnectorResponseErrorException {
-    public CreateAgreementException(Response response) {
+    public CreateAgreementException(RestClientResponse response) {
         super(response);
     }
 }

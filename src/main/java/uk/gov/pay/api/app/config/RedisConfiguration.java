@@ -1,45 +1,30 @@
 package uk.gov.pay.api.app.config;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import io.dropwizard.util.Duration;
+import io.micronaut.context.annotation.ConfigurationProperties;
 
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import java.time.Duration;
 
 import static java.lang.String.format;
 
+@ConfigurationProperties("redis")
 public class RedisConfiguration {
 
-    @Valid
     @NotNull
-    @JsonProperty("endpoint")
     private String endpoint;
 
-    @Valid
-    @JsonProperty("ssl")
     private boolean ssl;
 
-    @Valid
-    @JsonProperty("commandTimeout")
     private Duration commandTimeout;
 
-    @Valid
-    @JsonProperty("connectTimeout")
     private Duration connectTimeout;
 
-    @Valid
     @NotNull
-    @JsonProperty("reconnectDelayLowerBound")
     private Duration reconnectDelayLowerBound;
 
-    @Valid
     @NotNull
-    @JsonProperty("reconnectDelayUpperBound")
     private Duration reconnectDelayUpperBound;
 
-    @Valid
-    @NotNull
-    @JsonProperty("reconnectDelayBase")
     private long reconnectDelayBase;
 
     public String getUrl() {
@@ -47,22 +32,50 @@ public class RedisConfiguration {
     }
 
     public Long getCommandTimeout() {
-        return commandTimeout.toMilliseconds();
+        return commandTimeout.toMillis();
     }
 
     public Long getConnectTimeout() {
-        return connectTimeout.toMilliseconds();
+        return connectTimeout.toMillis();
     }
 
     public Long getReconnectDelayLowerBound() {
-        return reconnectDelayLowerBound.toMilliseconds();
+        return reconnectDelayLowerBound.toMillis();
     }
 
     public Long getReconnectDelayUpperBound() {
-        return reconnectDelayUpperBound.toMilliseconds();
+        return reconnectDelayUpperBound.toMillis();
     }
 
     public long getReconnectDelayBase() {
         return reconnectDelayBase;
+    }
+
+    public void setEndpoint(String endpoint) {
+        this.endpoint = endpoint;
+    }
+
+    public void setSsl(boolean ssl) {
+        this.ssl = ssl;
+    }
+
+    public void setCommandTimeout(Duration commandTimeout) {
+        this.commandTimeout = commandTimeout;
+    }
+
+    public void setConnectTimeout(Duration connectTimeout) {
+        this.connectTimeout = connectTimeout;
+    }
+
+    public void setReconnectDelayLowerBound(Duration reconnectDelayLowerBound) {
+        this.reconnectDelayLowerBound = reconnectDelayLowerBound;
+    }
+
+    public void setReconnectDelayUpperBound(Duration reconnectDelayUpperBound) {
+        this.reconnectDelayUpperBound = reconnectDelayUpperBound;
+    }
+
+    public void setReconnectDelayBase(long reconnectDelayBase) {
+        this.reconnectDelayBase = reconnectDelayBase;
     }
 }

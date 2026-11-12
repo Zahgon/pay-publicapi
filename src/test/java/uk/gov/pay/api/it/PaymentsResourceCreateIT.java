@@ -1,8 +1,8 @@
 package uk.gov.pay.api.it;
 
 import com.jayway.jsonassert.JsonAssert;
+import io.micronaut.http.HttpHeaders;
 import io.restassured.response.ValidatableResponse;
-import jakarta.ws.rs.core.HttpHeaders;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.hc.core5.http.HttpStatus;
 import org.json.JSONObject;
@@ -25,9 +25,9 @@ import java.io.InputStream;
 import java.time.ZonedDateTime;
 import java.util.Map;
 
+import static io.micronaut.http.HttpHeaders.AUTHORIZATION;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
-import static jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.hasSize;

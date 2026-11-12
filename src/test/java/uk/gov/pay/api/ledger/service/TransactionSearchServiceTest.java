@@ -1,15 +1,15 @@
 package uk.gov.pay.api.ledger.service;
 
-import au.com.dius.pact.consumer.junit.PactVerification;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
-import uk.gov.pay.api.app.RestClientFactory;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import uk.gov.pay.api.app.RestClient;
 import uk.gov.pay.api.app.config.PublicApiConfig;
-import uk.gov.pay.api.app.config.RestClientConfig;
 import uk.gov.pay.api.auth.Account;
 import uk.gov.pay.api.exception.BadRequestException;
 import uk.gov.pay.api.ledger.model.SearchResults;
@@ -19,22 +19,23 @@ import uk.gov.pay.api.model.PaymentState;
 import uk.gov.pay.api.model.TokenPaymentType;
 import uk.gov.pay.api.model.search.card.PaymentForSearchResult;
 import uk.gov.pay.api.service.PaymentUriGenerator;
+import uk.gov.pay.api.utils.RestClients;
+import uk.gov.pay.api.utils.pact.PactProviderExtension;
+import uk.gov.pay.api.utils.pact.Pacts;
 import uk.gov.service.payments.commons.model.SupportedLanguage;
-import uk.gov.service.payments.commons.testing.pact.consumers.Pacts;
-import uk.gov.service.payments.commons.testing.pact.consumers.PayPactProviderRule;
 
-import jakarta.ws.rs.client.Client;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static uk.gov.pay.api.matcher.BadRequestExceptionMatcher.aBadRequestExceptionWithError;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 public class TransactionSearchServiceTest {
 
     @Mock
@@ -45,17 +46,17 @@ public class TransactionSearchServiceTest {
     private static final String ACCOUNT_ID = "123456";
     private static final String CHARGE_ID = "charge97837509646393e3C";
 
-    @Rule
-    public PayPactProviderRule ledgerRule = new PayPactProviderRule("ledger", this);
+    @RegisterExtension
+    public PactProviderExtension ledgerRule = new PactProviderExtension("ledger");
 
-    @Before
+    @BeforeEach
     public void setup() {
         when(mockPublicApiConfiguration.getLedgerUrl()).thenReturn(ledgerRule.getUrl());
         when(mockPublicApiConfiguration.getBaseUrl()).thenReturn("http://publicapi.test.localhost/");
 
         PaymentUriGenerator paymentUriGenerator = new PaymentUriGenerator();
         LedgerUriGenerator ledgerUriGenerator = new LedgerUriGenerator(mockPublicApiConfiguration);
-        Client client = RestClientFactory.buildClient(new RestClientConfig(false));
+        RestClient client = RestClients.newRestClient(false);
 
         transactionSearchService = new TransactionSearchService(client, mockPublicApiConfiguration, ledgerUriGenerator,
                 paymentUriGenerator);
@@ -72,7 +73,6 @@ public class TransactionSearchServiceTest {
     }
 
     @Test
-    @PactVerification({"ledger"})
     @Pacts(pacts = {"publicapi-ledger-search-transaction"})
     public void testSearchTransaction() {
         Account account = new Account(ACCOUNT_ID, TokenPaymentType.CARD, "a-token-link");

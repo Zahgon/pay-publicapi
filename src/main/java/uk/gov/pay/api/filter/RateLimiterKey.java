@@ -1,8 +1,7 @@
 package uk.gov.pay.api.filter;
 
+import io.micronaut.http.HttpRequest;
 import uk.gov.pay.api.utils.PathHelper;
-
-import jakarta.ws.rs.container.ContainerRequestContext;
 
 public class RateLimiterKey {
 
@@ -16,12 +15,14 @@ public class RateLimiterKey {
         this.method = method;
     }
 
-    public static RateLimiterKey from(ContainerRequestContext requestContext, String accountId) {
-        final String method = requestContext.getMethod();
+    public static RateLimiterKey from(HttpRequest<?> request, String accountId) {
+        return from(request.getMethodName(), request.getPath(), accountId);
+    }
 
+    public static RateLimiterKey from(String method, String path, String accountId) {
         StringBuilder builder = new StringBuilder(method);
 
-        final String pathType = PathHelper.getPathType(requestContext.getUriInfo().getPath(), method);
+        final String pathType = PathHelper.getPathType(path, method);
         if (!pathType.isBlank()) {
             builder.append("-").append(pathType);
         }

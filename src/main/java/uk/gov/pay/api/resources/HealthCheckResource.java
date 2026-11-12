@@ -1,59 +1,43 @@
 package uk.gov.pay.api.resources;
 
-import com.codahale.metrics.annotation.Timed;
-import com.codahale.metrics.health.HealthCheck;
 import com.google.common.collect.ImmutableMap;
-import io.dropwizard.core.setup.Environment;
+import io.micronaut.http.HttpResponse;
+import io.micronaut.http.HttpStatus;
+import io.micronaut.http.MediaType;
+import io.micronaut.http.annotation.Controller;
+import io.micronaut.http.annotation.Get;
+import io.micronaut.http.annotation.Produces;
+import uk.gov.pay.api.healthcheck.HealthCheck;
 
-import jakarta.inject.Inject;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.Response;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.SortedMap;
 
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
-import static jakarta.ws.rs.core.Response.status;
-
-@Path("/")
+@Controller
 public class HealthCheckResource {
+
     public static final String HEALTHCHECK = "healthcheck";
     public static final String HEALTHY = "healthy";
 
-    Environment environment;
+    private final List<HealthCheck> healthChecks;
 
-    @Inject
-    public HealthCheckResource(Environment environment) {
-        this.environment = environment;
+    public HealthCheckResource(List<HealthCheck> healthChecks) {
+        this.healthChecks = healthChecks;
     }
 
-    @GET
-    @Timed
-    @Path(HEALTHCHECK)
-    @Produces(APPLICATION_JSON)
-    public Response healthCheck() {
-        SortedMap<String, HealthCheck.Result> results = environment.healthChecks().runHealthChecks();
-
-        Map<String, Map<String, Boolean>> response = getResponse(results);
-
-        boolean healthy = results.size() == results.values()
-                .stream()
-                .filter(HealthCheck.Result::isHealthy)
-                .count();
-
-        if(healthy) {
-            return Response.ok().entity(response).build();
-        }
-        return status(503).entity(response).build();
-    }
-
-    private Map<String, Map<String, Boolean>> getResponse(SortedMap<String, HealthCheck.Result> results) {
+    @Get("/" + HEALTHCHECK)
+    @Produces(MediaType.APPLICATION_JSON)
+    public HttpResponse<Map<String, Map<String, Boolean>>> healthCheck() {
         Map<String, Map<String, Boolean>> response = new HashMap<>();
-        for (SortedMap.Entry<String, HealthCheck.Result> entry : results.entrySet() ) {
-            response.put(entry.getKey(), ImmutableMap.of(HEALTHY, entry.getValue().isHealthy()));
+        boolean healthy = true;
+        for (HealthCheck healthCheck : healthChecks) {
+            boolean checkHealthy = healthCheck.isHealthy();
+            response.put(healthCheck.name(), ImmutableMap.of(HEALTHY, checkHealthy));
+            healthy &= checkHealthy;
         }
-        return response;
+        if (healthy) {
+            return HttpResponse.ok(response);
+        }
+        return HttpResponse.<Map<String, Map<String, Boolean>>>status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
     }
 }

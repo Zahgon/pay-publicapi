@@ -1,25 +1,24 @@
 package uk.gov.pay.api.exception.mapper;
 
+import io.micronaut.http.HttpResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.api.exception.RefundsValidationException;
 import uk.gov.pay.api.model.RequestError;
 
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.ext.ExceptionMapper;
+import jakarta.inject.Singleton;
 
-public class RefundsValidationExceptionMapper implements ExceptionMapper<RefundsValidationException> {
+@Singleton
+public class RefundsValidationExceptionMapper extends SafeExceptionMapper<RefundsValidationException> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RefundsValidationExceptionMapper.class);
 
     @Override
-    public Response toResponse(RefundsValidationException exception) {
+    protected HttpResponse<?> toResponse(RefundsValidationException exception) {
 
         RequestError requestError = exception.getRequestError();
         LOGGER.debug("Refunds Validation exception {}", requestError);
 
-        return Response.status(422)
-                .entity(requestError)
-                .build();
+        return ErrorResponses.of(422, requestError);
     }
 }

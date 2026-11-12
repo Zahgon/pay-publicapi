@@ -1,7 +1,5 @@
 package uk.gov.pay.api.agreement.service;
 
-import jakarta.inject.Inject;
-import jakarta.ws.rs.core.Response;
 import uk.gov.pay.api.agreement.model.Agreement;
 import uk.gov.pay.api.agreement.model.AgreementCreatedResponse;
 import uk.gov.pay.api.agreement.model.AgreementLedgerResponse;
@@ -14,8 +12,11 @@ import uk.gov.pay.api.model.search.PaginationDecorator;
 import uk.gov.pay.api.service.ConnectorService;
 import uk.gov.pay.api.service.LedgerService;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.util.stream.Collectors;
 
+@Singleton
 public class AgreementsService {
     private static final String AGREEMENTS_PATH = "/v1/agreements";
     private final ConnectorService connectorService;
@@ -33,10 +34,9 @@ public class AgreementsService {
         return connectorService.createAgreement(account, createAgreementRequest);
     }
 
-    public Response cancelAgreement(Account account, String agreementId) {
+    public void cancelAgreement(Account account, String agreementId) {
         connectorService.cancelAgreement(account, agreementId);
 
-        return Response.noContent().build();
     }
 
     public AgreementLedgerResponse getAgreement(Account account, String agreementId) {

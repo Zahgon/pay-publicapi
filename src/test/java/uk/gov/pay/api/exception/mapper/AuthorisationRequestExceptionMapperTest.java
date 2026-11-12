@@ -1,16 +1,16 @@
 package uk.gov.pay.api.exception.mapper;
 
+import io.micronaut.http.HttpResponse;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.pay.api.app.RestClientResponse;
 import uk.gov.pay.api.exception.AuthorisationRequestException;
 import uk.gov.pay.api.exception.ConnectorResponseErrorException;
 import uk.gov.pay.api.model.RequestError;
 import uk.gov.service.payments.commons.model.ErrorIdentifier;
-
-import jakarta.ws.rs.core.Response;
 
 import java.util.List;
 
@@ -31,7 +31,7 @@ import static uk.gov.service.payments.commons.model.ErrorIdentifier.TELEPHONE_PA
 class AuthorisationRequestExceptionMapperTest {
 
     @Mock
-    private Response mockResponse;
+    private RestClientResponse mockResponse;
 
     private final AuthorisationRequestExceptionMapper mapper = new AuthorisationRequestExceptionMapper();
 
@@ -55,11 +55,11 @@ class AuthorisationRequestExceptionMapperTest {
         List<String> connectorErrorMessages = messageFromConnector ? List.of(expectedDescription) : List.of("Generic error message");
         when(mockResponse.readEntity(ConnectorResponseErrorException.ConnectorErrorResponse.class))
                 .thenReturn(new ConnectorResponseErrorException.ConnectorErrorResponse(errorIdentifier, connectorErrorMessages));
-        Response returnedResponse = mapper.toResponse(new AuthorisationRequestException(mockResponse));
-        RequestError returnedError = (RequestError) returnedResponse.getEntity();
+        HttpResponse<?> returnedResponse = mapper.handle(null, new AuthorisationRequestException(mockResponse));
+        RequestError returnedError = (RequestError) returnedResponse.body();
         assertThat(returnedError.getCode(), is(errorCode));
         assertThat(returnedError.getDescription(), is(expectedDescription));
-        assertThat(returnedResponse.getStatus(), is(expectedStatusCode));
+        assertThat(returnedResponse.code(), is(expectedStatusCode));
     }
 
 }

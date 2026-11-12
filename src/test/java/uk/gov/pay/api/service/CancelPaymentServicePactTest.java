@@ -1,53 +1,49 @@
 package uk.gov.pay.api.service;
 
-import au.com.dius.pact.consumer.junit.PactVerification;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import io.micronaut.http.HttpResponse;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
-import uk.gov.pay.api.app.RestClientFactory;
+import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.pay.api.app.RestClient;
 import uk.gov.pay.api.app.config.PublicApiConfig;
-import uk.gov.pay.api.app.config.RestClientConfig;
 import uk.gov.pay.api.auth.Account;
 import uk.gov.pay.api.model.TokenPaymentType;
-import uk.gov.service.payments.commons.testing.pact.consumers.Pacts;
-import uk.gov.service.payments.commons.testing.pact.consumers.PayPactProviderRule;
-
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.core.Response;
+import uk.gov.pay.api.utils.RestClients;
+import uk.gov.pay.api.utils.pact.PactProviderExtension;
+import uk.gov.pay.api.utils.pact.Pacts;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class CancelPaymentServicePactTest {
 
     private final Account ACCOUNT = new Account("123456", TokenPaymentType.CARD, "a-token-link");
     
     private CancelPaymentService cancelPaymentService;
     
-    @Rule
-    public PayPactProviderRule connectorRule = new PayPactProviderRule("connector", this);
+    @RegisterExtension
+    public PactProviderExtension connectorRule = new PactProviderExtension("connector");
 
     @Mock
     private PublicApiConfig mockConfiguration;
     
-    @Before
+    @BeforeEach
     public void setUp() {
         when(mockConfiguration.getConnectorUrl()).thenReturn(connectorRule.getUrl());
         ConnectorUriGenerator connectorUriGenerator = new ConnectorUriGenerator(mockConfiguration);
-        Client client = RestClientFactory.buildClient(new RestClientConfig(false));
+        RestClient client = RestClients.newRestClient(false);
         cancelPaymentService = new CancelPaymentService(client, connectorUriGenerator);
     }
 
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-cancel-payment-with-created-state"})
     public void cancelAPaymentWithCreatedState() {
-        Response cancelPaymentResponse = cancelPaymentService.cancel(ACCOUNT, "charge8133029783750964639");
-        assertThat(cancelPaymentResponse.getStatus(), is(204));
+        HttpResponse<?> cancelPaymentResponse = cancelPaymentService.cancel(ACCOUNT, "charge8133029783750964639");
+        assertThat(cancelPaymentResponse.code(), is(204));
     }
 }

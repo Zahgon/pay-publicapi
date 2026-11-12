@@ -1,33 +1,27 @@
 package uk.gov.pay.api.filter.ratelimit;
 
-import com.codahale.metrics.MetricRegistry;
-import com.google.inject.Inject;
-import com.google.inject.OutOfScopeException;
-import io.dropwizard.core.setup.Environment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.api.app.config.RateLimiterConfig;
 import uk.gov.pay.api.filter.RateLimiterKey;
 import uk.gov.pay.api.managed.RedisClientManager;
 
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoField;
-import java.util.concurrent.Callable;
 
 @Singleton
 public class RedisRateLimiter {
     private static final Logger LOGGER = LoggerFactory.getLogger(RedisRateLimiter.class);
-    private final MetricRegistry metricsRegistry;
 
     private RateLimitManager rateLimitManager;
     private RedisClientManager redisClientManager;
 
     @Inject
-    public RedisRateLimiter(RateLimiterConfig rateLimiterConfig, RedisClientManager redisClientManager, Environment environment) {
+    public RedisRateLimiter(RateLimiterConfig rateLimiterConfig, RedisClientManager redisClientManager) {
         this.rateLimitManager = new RateLimitManager(rateLimiterConfig);
         this.redisClientManager = redisClientManager;
-        this.metricsRegistry = environment.metrics();
     }
 
     void checkRateOf(String accountId, RateLimiterKey key)
@@ -59,7 +53,7 @@ public class RedisRateLimiter {
         
         Long count = 0L;
         try {
-            count = time("redis.incr", () -> redisClientManager.getRedisConnection().sync().incr(derivedKey));
+            count = redisClientManager.getRedisConnection().sync().incr(derivedKey);
         } catch (Exception e) {
             LOGGER.info(String.format("Failed to increment redis key %s. Cause of error: %s", derivedKey, e));
             throw new RedisException();
@@ -67,7 +61,7 @@ public class RedisRateLimiter {
         
         try {
             // expire key after a (rateLimitInterval / 1000) so they are not on redis forever
-            time("redis.expire", () -> redisClientManager.getRedisConnection().sync().expire(derivedKey, rateLimitInterval / 1000));
+            redisClientManager.getRedisConnection().sync().expire(derivedKey, rateLimitInterval / 1000);
         } catch (Exception e) {
             LOGGER.info(String.format("Failed to expire redis key %s. Cause of error: %s", derivedKey, e));
             throw new RedisException();
@@ -76,9 +70,6 @@ public class RedisRateLimiter {
         return count;
     }
 
-    private <T> T time(String metricName, Callable<T> callable) throws Exception {
-        return this.metricsRegistry.timer(metricName).time(callable);
-    }
 
     /**
      * Derives Key (Service Key + Window) to use in Redis for noOfReq limiting.
@@ -92,7 +83,7 @@ public class RedisRateLimiter {
      *
      * @return key based on {@link RateLimiterKey#getKey()} and current second/minute/hour window 
      */
-    private String getKeyForWindow(String key, int rateLimitInterval) throws OutOfScopeException {
+    private String getKeyForWindow(String key, int rateLimitInterval) throws UnsupportedRateLimitIntervalException {
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -105,9 +96,18 @@ public class RedisRateLimiter {
         } else if (rateLimitInterval >= 60000 && rateLimitInterval < 3600000) {
             window = now.get(ChronoField.MINUTE_OF_HOUR) / (rateLimitInterval / 1000);
         } else {
-            throw new OutOfScopeException("Rate limit interval specified is not currently supported");
+            throw new UnsupportedRateLimitIntervalException("Rate limit interval specified is not currently supported");
         }
 
         return key + window;
+    }
+
+    /**
+     * Raised for a rate limit interval of an hour or more, which the per-window keys cannot express.
+     */
+    static class UnsupportedRateLimitIntervalException extends RuntimeException {
+        UnsupportedRateLimitIntervalException(String message) {
+            super(message);
+        }
     }
 }

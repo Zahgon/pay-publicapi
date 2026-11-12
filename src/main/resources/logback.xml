@@ -1,0 +1,12 @@
+<configuration>
+    <!-- JSON log lines on stdout, as the service has always written them. -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"container":"publicapi","environment":"${ENVIRONMENT:-}"}</customFields>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+    </root>
+</configuration>

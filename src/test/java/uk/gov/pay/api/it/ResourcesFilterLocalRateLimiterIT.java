@@ -1,7 +1,6 @@
 package uk.gov.pay.api.it;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
-import io.dropwizard.testing.DropwizardTestSupport;
 import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
 import io.restassured.response.ValidatableResponse;
@@ -12,8 +11,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import uk.gov.pay.api.app.PublicApi;
 import uk.gov.pay.api.app.config.PublicApiConfig;
+import uk.gov.pay.api.it.support.PublicApiTestApp;
 import uk.gov.pay.api.model.Address;
 import uk.gov.pay.api.model.CardDetailsFromResponse;
 import uk.gov.pay.api.model.PaymentState;
@@ -33,11 +32,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
-import static io.dropwizard.testing.ConfigOverride.config;
-import static io.dropwizard.testing.ResourceHelpers.resourceFilePath;
+import static io.micronaut.http.HttpHeaders.AUTHORIZATION;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
-import static jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static uk.gov.pay.api.utils.mocks.ChargeResponseFromConnector.ChargeResponseFromConnectorBuilder.aCreateOrGetChargeResponseFromConnector;
@@ -76,7 +73,7 @@ class ResourcesFilterLocalRateLimiterIT {
             .options(wireMockConfig().dynamicPort())
             .build();
 
-    private static DropwizardTestSupport<PublicApiConfig> app;
+    private static PublicApiTestApp app;
 
     @BeforeEach
     void setup() {
@@ -103,11 +100,9 @@ class ResourcesFilterLocalRateLimiterIT {
 
     @BeforeAll
     static void startApp() throws Exception {
-        app = new DropwizardTestSupport<>(
-                PublicApi.class,
-                resourceFilePath("config/test-config.yaml"),
-                config("connectorUrl", connectorServer.baseUrl()),
-                config("publicAuthUrl", publicAuthServer.baseUrl() + "/v1/auth")
+        app = PublicApiTestApp.withOverrides(
+                "publicapi.connector-url", connectorServer.baseUrl(),
+                "publicapi.public-auth-url", publicAuthServer.baseUrl() + "/v1/auth"
         );
         app.before();
     }

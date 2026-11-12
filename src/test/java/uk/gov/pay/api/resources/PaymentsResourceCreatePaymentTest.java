@@ -1,6 +1,7 @@
 package uk.gov.pay.api.resources;
 
-import org.jetbrains.annotations.NotNull;
+import io.micronaut.http.HttpRequest;
+import io.micronaut.http.HttpResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,6 +12,7 @@ import uk.gov.pay.api.auth.Account;
 import uk.gov.pay.api.model.Address;
 import uk.gov.pay.api.model.CardDetails;
 import uk.gov.pay.api.model.CardDetailsFromResponse;
+import uk.gov.pay.api.model.CreateCardPaymentRequest;
 import uk.gov.pay.api.model.CreateCardPaymentRequestBuilder;
 import uk.gov.pay.api.model.CreatedPaymentWithAllLinks;
 import uk.gov.pay.api.model.PaymentSettlementSummary;
@@ -18,6 +20,7 @@ import uk.gov.pay.api.model.PaymentState;
 import uk.gov.pay.api.model.RefundSummary;
 import uk.gov.pay.api.model.TokenPaymentType;
 import uk.gov.pay.api.model.links.PaymentWithAllLinks;
+import uk.gov.pay.api.resources.binding.RequestEntityReader;
 import uk.gov.pay.api.service.CancelPaymentService;
 import uk.gov.pay.api.service.CapturePaymentService;
 import uk.gov.pay.api.service.CreatePaymentService;
@@ -25,10 +28,10 @@ import uk.gov.pay.api.service.GetPaymentEventsService;
 import uk.gov.pay.api.service.GetPaymentService;
 import uk.gov.pay.api.service.PaymentSearchService;
 import uk.gov.pay.api.service.PublicApiUriGenerator;
+import uk.gov.pay.api.validation.RequestValidator;
 import uk.gov.service.payments.commons.model.AuthorisationMode;
 import uk.gov.service.payments.commons.model.SupportedLanguage;
 
-import jakarta.ws.rs.core.Response;
 import java.net.URI;
 import java.util.Collections;
 
@@ -68,6 +71,12 @@ public class PaymentsResourceCreatePaymentTest {
     @Mock
     private GetPaymentEventsService getPaymentEventsService;
 
+    @Mock
+    private RequestEntityReader requestEntityReader;
+
+    @Mock
+    private RequestValidator requestValidator;
+
     private final String PAYMENT_URI = "https://my.link/v1/payments/abc123";
 
     @BeforeEach
@@ -76,7 +85,7 @@ public class PaymentsResourceCreatePaymentTest {
     }
 
     @Test
-    void createNewPayment_withCardPayment_invokesCreatePaymentService() {
+    void createNewPayment_withCardPayment_invokesCreatePaymentService() throws Exception {
         Account account = new Account("foo", TokenPaymentType.CARD, "a-token-link");
         var createPaymentRequest = CreateCardPaymentRequestBuilder.builder()
                 .amount(100)
@@ -89,17 +98,19 @@ public class PaymentsResourceCreatePaymentTest {
         CreatedPaymentWithAllLinks payment = CreatedPaymentWithAllLinks.of(injectedResponse, BRAND_NEW);
 
         when(createPaymentService.create(account, createPaymentRequest, null)).thenReturn(payment);
+        HttpRequest<?> request = HttpRequest.POST("/v1/payments", "{}");
+        when(requestEntityReader.read(request, CreateCardPaymentRequest.class)).thenReturn(createPaymentRequest);
 
-        Response newPayment = paymentsResource.createNewPayment(account, createPaymentRequest, null);
+        HttpResponse<PaymentWithAllLinks> newPayment = paymentsResource.createNewPayment(account, request, null);
 
-        assertThat(newPayment.getHeaderString(PRAGMA), is("no-cache"));
-        assertThat(newPayment.getHeaderString(CACHE_CONTROL), is("no-store"));
-        assertThat(newPayment.getStatus(), is(201));
-        assertThat(newPayment.getLocation(), is(URI.create(PAYMENT_URI)));
-        assertThat(newPayment.getEntity(), sameInstance(injectedResponse));
+        assertThat(newPayment.getHeaders().get(PRAGMA), is("no-cache"));
+        assertThat(newPayment.getHeaders().get(CACHE_CONTROL), is("no-store"));
+        assertThat(newPayment.code(), is(201));
+        assertThat(newPayment.getHeaders().get("Location"), is(URI.create(PAYMENT_URI).toString()));
+        assertThat(newPayment.body(), sameInstance(injectedResponse));
     }
 
-    @NotNull
+
     private PaymentWithAllLinks aSuccessfullyCreatedPayment() {
         final Address cardholderAddress = new Address("123 Acacia Ave", "", "", "London", "GB");
         return new PaymentWithAllLinks.PaymentWithAllLinksBuilder()

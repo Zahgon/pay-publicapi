@@ -24,11 +24,11 @@ import java.util.List;
 import java.util.Map;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static io.micronaut.http.HttpHeaders.AUTHORIZATION;
+import static io.micronaut.http.HttpHeaders.CONTENT_TYPE;
+import static io.micronaut.http.MediaType.APPLICATION_JSON;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
-import static jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION;
-import static jakarta.ws.rs.core.HttpHeaders.CONTENT_TYPE;
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.apache.hc.core5.http.HttpHeaders.CACHE_CONTROL;
 import static org.apache.hc.core5.http.HttpHeaders.PRAGMA;
 import static org.eclipse.jetty.http.HttpStatus.OK_200;

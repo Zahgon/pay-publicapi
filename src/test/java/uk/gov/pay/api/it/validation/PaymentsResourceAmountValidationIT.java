@@ -10,9 +10,9 @@ import uk.gov.pay.api.utils.PublicAuthMockClientJUnit5;
 import java.io.IOException;
 import java.io.InputStream;
 
+import static io.micronaut.http.HttpHeaders.AUTHORIZATION;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
-import static jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.Is.is;
 

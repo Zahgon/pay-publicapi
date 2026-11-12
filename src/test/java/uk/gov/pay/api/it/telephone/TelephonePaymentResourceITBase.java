@@ -3,14 +3,13 @@ package uk.gov.pay.api.it.telephone;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import io.dropwizard.testing.DropwizardTestSupport;
 import io.restassured.response.ValidatableResponse;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import uk.gov.pay.api.app.PublicApi;
 import uk.gov.pay.api.app.config.PublicApiConfig;
-import uk.gov.pay.api.it.rule.RedisDockerRule;
+import uk.gov.pay.api.it.support.InMemoryRedisExtension;
+import uk.gov.pay.api.it.support.PublicApiTestApp;
 import uk.gov.pay.api.model.telephone.CreateTelephonePaymentRequest;
 import uk.gov.pay.api.utils.ApiKeyGenerator;
 
@@ -18,11 +17,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
-import static io.dropwizard.testing.ConfigOverride.config;
-import static io.dropwizard.testing.ResourceHelpers.resourceFilePath;
+import static io.micronaut.http.HttpHeaders.AUTHORIZATION;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
-import static jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION;
 
 public abstract class TelephonePaymentResourceITBase {
     //Must use same secret set in test-config.xml's apiKeyHmacSecret
@@ -33,7 +30,7 @@ public abstract class TelephonePaymentResourceITBase {
     protected static final CreateTelephonePaymentRequest.Builder createTelephonePaymentRequest = new CreateTelephonePaymentRequest.Builder();
 
     @RegisterExtension
-    public static RedisDockerRule redisDockerRule = new RedisDockerRule();
+    public static InMemoryRedisExtension redisDockerRule = new InMemoryRedisExtension();
 
     private static final Gson GSON = new GsonBuilder().serializeNulls().create();
 
@@ -47,16 +44,14 @@ public abstract class TelephonePaymentResourceITBase {
             .options(wireMockConfig().dynamicPort())
             .build();
 
-    public static DropwizardTestSupport<PublicApiConfig> app;
+    public static PublicApiTestApp app;
 
     @BeforeAll
     static void beforeAll() throws Exception {
-        app = new DropwizardTestSupport<>(
-                PublicApi.class,
-                resourceFilePath("config/test-config.yaml"),
-                config("connectorUrl", connectorServer.baseUrl()),
-                config("publicAuthUrl", publicAuthServer.baseUrl() + "/v1/auth"),
-                config("redis.endpoint", redisDockerRule.getRedisUrl())
+        app = PublicApiTestApp.withOverrides(
+                "publicapi.connector-url", connectorServer.baseUrl(),
+                "publicapi.public-auth-url", publicAuthServer.baseUrl() + "/v1/auth",
+                "redis.endpoint", redisDockerRule.getRedisUrl()
         );
         app.before();
     }

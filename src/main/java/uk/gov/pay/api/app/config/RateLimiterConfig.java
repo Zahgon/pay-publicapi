@@ -1,7 +1,8 @@
 package uk.gov.pay.api.app.config;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import io.dropwizard.core.Configuration;
+import io.micronaut.context.annotation.ConfigurationProperties;
+import io.micronaut.core.annotation.Nullable;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -10,7 +11,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-public class RateLimiterConfig extends Configuration {
+@ConfigurationProperties("rate-limiter")
+public class RateLimiterConfig {
 
     @Min(1)
     private int noOfReq;
@@ -98,5 +100,53 @@ public class RateLimiterConfig extends Configuration {
 
     public int getIntervalInMillisForLowTrafficAccounts() {
         return intervalInMillisForLowTrafficAccounts;
+    }
+
+    public void setNoOfReq(int noOfReq) {
+        this.noOfReq = noOfReq;
+    }
+
+    public void setNoOfReqForPost(int noOfReqForPost) {
+        this.noOfReqForPost = noOfReqForPost;
+    }
+
+    public void setNoOfReqForElevatedAccounts(int noOfReqForElevatedAccounts) {
+        this.noOfReqForElevatedAccounts = noOfReqForElevatedAccounts;
+    }
+
+    public void setNoOfPostReqForElevatedAccounts(int noOfPostReqForElevatedAccounts) {
+        this.noOfPostReqForElevatedAccounts = noOfPostReqForElevatedAccounts;
+    }
+
+    public void setNoOfReqPerNode(int noOfReqPerNode) {
+        this.noOfReqPerNode = noOfReqPerNode;
+    }
+
+    public void setNoOfReqForPostPerNode(int noOfReqForPostPerNode) {
+        this.noOfReqForPostPerNode = noOfReqForPostPerNode;
+    }
+
+    public void setElevatedAccounts(@Nullable String elevatedAccounts) {
+        this.elevatedAccounts = new StringToListConverter().convert(elevatedAccounts);
+    }
+
+    public void setPerMillis(int perMillis) {
+        this.perMillis = perMillis;
+    }
+
+    public void setLowTrafficAccounts(@Nullable String lowTrafficAccounts) {
+        this.lowTrafficAccounts = new StringToListConverter().convert(lowTrafficAccounts);
+    }
+
+    public void setNoOfReqForLowTrafficAccounts(int noOfReqForLowTrafficAccounts) {
+        this.noOfReqForLowTrafficAccounts = noOfReqForLowTrafficAccounts;
+    }
+
+    public void setNoOfPostReqForLowTrafficAccounts(int noOfPostReqForLowTrafficAccounts) {
+        this.noOfPostReqForLowTrafficAccounts = noOfPostReqForLowTrafficAccounts;
+    }
+
+    public void setIntervalInMillisForLowTrafficAccounts(int intervalInMillisForLowTrafficAccounts) {
+        this.intervalInMillisForLowTrafficAccounts = intervalInMillisForLowTrafficAccounts;
     }
 }

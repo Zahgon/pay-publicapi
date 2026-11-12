@@ -1,13 +1,10 @@
 package uk.gov.pay.api.service;
 
-import jakarta.inject.Inject;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.Entity;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import org.apache.hc.core5.http.HttpStatus;
 import uk.gov.pay.api.agreement.model.AgreementCreatedResponse;
 import uk.gov.pay.api.agreement.model.CreateAgreementRequest;
+import uk.gov.pay.api.app.RestClient;
+import uk.gov.pay.api.app.RestClientResponse;
 import uk.gov.pay.api.auth.Account;
 import uk.gov.pay.api.exception.CancelAgreementException;
 import uk.gov.pay.api.exception.CreateAgreementException;
@@ -19,24 +16,25 @@ import uk.gov.pay.api.model.ChargeFromResponse;
 import uk.gov.pay.api.model.PaymentEvents;
 import uk.gov.pay.api.model.RefundFromConnector;
 
-import static jakarta.ws.rs.client.Entity.json;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
+import java.util.Map;
+
 import static org.apache.hc.core5.http.HttpStatus.SC_OK;
 
+@Singleton
 public class ConnectorService {
-    private final Client client;
+    private final RestClient client;
     private final ConnectorUriGenerator connectorUriGenerator;
 
     @Inject
-    public ConnectorService(Client client, ConnectorUriGenerator connectorUriGenerator) {
+    public ConnectorService(RestClient client, ConnectorUriGenerator connectorUriGenerator) {
         this.client = client;
         this.connectorUriGenerator = connectorUriGenerator;
     }
 
     public Charge getCharge(Account account, String paymentId) {
-        Response response = client
-                .target(connectorUriGenerator.chargeURI(account, paymentId))
-                .request()
-                .get();
+        RestClientResponse response = client.get(connectorUriGenerator.chargeURI(account, paymentId), Map.of());
 
         if (response.getStatus() == SC_OK) {
             ChargeFromResponse chargeFromResponse = response.readEntity(ChargeFromResponse.class);
@@ -47,11 +45,7 @@ public class ConnectorService {
     }
 
     public PaymentEvents getChargeEvents(Account account, String paymentId) {
-        Response connectorResponse = client
-                .target(connectorUriGenerator.chargeEventsURI(account, paymentId))
-                .request()
-                .accept(MediaType.APPLICATION_JSON)
-                .get();
+        RestClientResponse connectorResponse = client.get(connectorUriGenerator.chargeEventsURI(account, paymentId), Map.of("Accept", "application/json"));
 
         if (connectorResponse.getStatus() == SC_OK) {
             return connectorResponse.readEntity(PaymentEvents.class);
@@ -61,11 +55,7 @@ public class ConnectorService {
     }
 
     public RefundFromConnector getPaymentRefund(String accountId, String paymentId, String refundId) {
-        Response connectorResponse = client
-                .target(connectorUriGenerator.refundForPaymentURI(accountId, paymentId, refundId))
-                .request()
-                .accept(MediaType.APPLICATION_JSON)
-                .get();
+        RestClientResponse connectorResponse = client.get(connectorUriGenerator.refundForPaymentURI(accountId, paymentId, refundId), Map.of("Accept", "application/json"));
 
         if (connectorResponse.getStatus() == SC_OK) {
             return connectorResponse.readEntity(RefundFromConnector.class);
@@ -75,11 +65,8 @@ public class ConnectorService {
     }
 
     public AgreementCreatedResponse createAgreement(Account account, CreateAgreementRequest createAgreementRequest) {
-        Response response = client
-                .target(connectorUriGenerator.getAgreementURI(account))
-                .request()
-                .accept(MediaType.APPLICATION_JSON)
-                .post(buildCreateAgreementRequestPayload(createAgreementRequest));
+        RestClientResponse response = client.post(connectorUriGenerator.getAgreementURI(account),
+                Map.of("Accept", "application/json"), createAgreementRequest.toConnectorPayload());
         if (response.getStatus() != HttpStatus.SC_CREATED) {
             throw new CreateAgreementException(response);
         }
@@ -87,18 +74,9 @@ public class ConnectorService {
     }
 
     public void cancelAgreement(Account account, String agreementId) {
-        Response response = client
-                .target(connectorUriGenerator.cancelAgreementURI(account, agreementId))
-                .request()
-                .post(null);
+        RestClientResponse response = client.post(connectorUriGenerator.cancelAgreementURI(account, agreementId), null);
         if (response.getStatus() != HttpStatus.SC_NO_CONTENT) {
             throw new CancelAgreementException(response);
         }
-
-        response.close();
-    }
-
-    private Entity buildCreateAgreementRequestPayload(CreateAgreementRequest requestPayload) {
-        return json(requestPayload.toConnectorPayload());
     }
 }

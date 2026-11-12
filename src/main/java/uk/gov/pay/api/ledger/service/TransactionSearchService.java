@@ -1,9 +1,11 @@
 package uk.gov.pay.api.ledger.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.common.collect.ImmutableSet;
-import com.google.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import uk.gov.pay.api.app.RestClient;
+import uk.gov.pay.api.app.RestClientResponse;
 import uk.gov.pay.api.app.config.PublicApiConfig;
 import uk.gov.pay.api.auth.Account;
 import uk.gov.pay.api.exception.BadRequestException;
@@ -18,13 +20,10 @@ import uk.gov.pay.api.model.links.SearchNavigationLinks;
 import uk.gov.pay.api.model.search.card.PaymentForSearchResult;
 import uk.gov.pay.api.model.search.card.PaymentSearchResponse;
 import uk.gov.pay.api.service.PaymentUriGenerator;
+import uk.gov.pay.api.utils.UriTemplate;
 
-import jakarta.ws.rs.ProcessingException;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.core.GenericType;
-import jakarta.ws.rs.core.HttpHeaders;
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.UriBuilder;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
@@ -32,7 +31,6 @@ import java.util.Map;
 import java.util.Set;
 
 import static java.util.stream.Collectors.toList;
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.apache.hc.core5.http.HttpStatus.SC_OK;
 import static uk.gov.pay.api.common.SearchConstants.CARDHOLDER_NAME_KEY;
@@ -48,16 +46,17 @@ import static uk.gov.pay.api.common.SearchConstants.STATE_KEY;
 import static uk.gov.pay.api.common.SearchConstants.TO_DATE_KEY;
 import static uk.gov.pay.api.validation.PaymentSearchValidator.validateSearchParameters;
 
+@Singleton
 public class TransactionSearchService {
 
     private final String baseUrl;
     private final PaymentUriGenerator paymentApiUriGenerator;
-    private final Client client;
+    private final RestClient client;
     private final LedgerUriGenerator ledgerUriGenerator;
     private final Logger LOGGER = LoggerFactory.getLogger(TransactionSearchService.class);
 
     @Inject
-    public TransactionSearchService(Client client,
+    public TransactionSearchService(RestClient client,
                                     PublicApiConfig configuration,
                                     LedgerUriGenerator ledgerUriGenerator,
                                     PaymentUriGenerator paymentApiUriGenerator) {
@@ -77,11 +76,7 @@ public class TransactionSearchService {
 
         searchParams.setAccountId(account.accountId());
         String url = ledgerUriGenerator.transactionsURIWithParams(searchParams.getQueryMap());
-        Response ledgerResponse = client
-                .target(url)
-                .request()
-                .header(HttpHeaders.ACCEPT, APPLICATION_JSON)
-                .get();
+        RestClientResponse ledgerResponse = client.get(url, Map.of("Accept", "application/json"));
         LOGGER.info("response from ledger for transaction search: {}", ledgerResponse);
         if (ledgerResponse.getStatus() == SC_OK) {
             return processResponse(ledgerResponse);
@@ -89,12 +84,12 @@ public class TransactionSearchService {
         throw new SearchTransactionsException(ledgerResponse);
     }
 
-    private SearchResults<PaymentForSearchResult> processResponse(Response connectorResponse) {
+    private SearchResults<PaymentForSearchResult> processResponse(RestClientResponse connectorResponse) {
         PaymentSearchResponse<TransactionResponse> response;
         try {
-            response = connectorResponse.readEntity(new GenericType<>() {
+            response = connectorResponse.readEntity(new TypeReference<>() {
             });
-        } catch (ProcessingException ex) {
+        } catch (RestClientResponse.RestClientProcessingException ex) {
             throw new SearchTransactionsException(ex);
         }
 
@@ -141,10 +136,10 @@ public class TransactionSearchService {
         if (link == null)
             return null;
 
-        return UriBuilder.fromUri(baseUrl)
+        return UriTemplate.fromUri(baseUrl)
                 .path(path)
                 .replaceQuery(new URI(link.getHref()).getQuery())
-                .replaceQueryParam("account_id", (Object[]) null)
+                .removeQueryParam("account_id")
                 .build()
                 .toString();
     }

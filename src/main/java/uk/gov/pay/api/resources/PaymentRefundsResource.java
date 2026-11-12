@@ -1,7 +1,16 @@
 package uk.gov.pay.api.resources;
 
-import com.codahale.metrics.annotation.Timed;
-import io.dropwizard.auth.Auth;
+import io.micronaut.core.annotation.Nullable;
+import io.micronaut.http.HttpRequest;
+import io.micronaut.http.HttpResponse;
+import io.micronaut.http.MediaType;
+import io.micronaut.http.annotation.Consumes;
+import io.micronaut.http.annotation.Controller;
+import io.micronaut.http.annotation.Get;
+import io.micronaut.http.annotation.Header;
+import io.micronaut.http.annotation.PathVariable;
+import io.micronaut.http.annotation.Post;
+import io.micronaut.http.annotation.Produces;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -9,15 +18,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.inject.Inject;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.HeaderParam;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.api.app.config.PublicApiConfig;
@@ -28,6 +28,7 @@ import uk.gov.pay.api.model.RefundsResponse;
 import uk.gov.pay.api.model.RequestError;
 import uk.gov.pay.api.model.search.card.RefundForSearchResult;
 import uk.gov.pay.api.model.search.card.RefundResult;
+import uk.gov.pay.api.resources.binding.RequestEntityReader;
 import uk.gov.pay.api.resources.error.ApiErrorResponse;
 import uk.gov.pay.api.service.ConnectorService;
 import uk.gov.pay.api.service.CreateRefundService;
@@ -35,22 +36,25 @@ import uk.gov.pay.api.service.GetPaymentRefundService;
 import uk.gov.pay.api.service.GetPaymentRefundsService;
 import uk.gov.pay.api.service.GetPaymentService;
 
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
+import jakarta.inject.Inject;
+import java.io.IOException;
+
 import static uk.gov.pay.api.common.ResponseConstants.RESPONSE_200_DESCRIPTION;
 import static uk.gov.pay.api.common.ResponseConstants.RESPONSE_401_DESCRIPTION;
 import static uk.gov.pay.api.common.ResponseConstants.RESPONSE_404_DESCRIPTION;
 import static uk.gov.pay.api.common.ResponseConstants.RESPONSE_429_DESCRIPTION;
 import static uk.gov.pay.api.common.ResponseConstants.RESPONSE_500_DESCRIPTION;
 
-@Path("/v1/payments/{paymentId}/refunds")
+@Controller
 @Tag(name = "Refunding card payments")
-@Produces({"application/json"})
+@Produces(MediaType.APPLICATION_JSON)
 public class PaymentRefundsResource {
     private static final Logger logger = LoggerFactory.getLogger(PaymentRefundsResource.class);
 
     private final GetPaymentRefundsService getPaymentRefundsService;
     private final GetPaymentRefundService getPaymentRefundService;
     private final CreateRefundService createRefundService;
+    private final RequestEntityReader requestEntityReader;
 
     @Inject
     public PaymentRefundsResource(PublicApiConfig configuration,
@@ -58,15 +62,16 @@ public class PaymentRefundsResource {
                                   GetPaymentRefundService getPaymentRefundService,
                                   ConnectorService connectorService,
                                   GetPaymentService getPaymentService,
-                                  CreateRefundService createRefundService) {
+                                  CreateRefundService createRefundService,
+                                  RequestEntityReader requestEntityReader) {
+        this.requestEntityReader = requestEntityReader;
         this.getPaymentRefundsService = getPaymentRefundsService;
         this.getPaymentRefundService = getPaymentRefundService;
         this.createRefundService = createRefundService;
     }
 
-    @GET
-    @Timed
-    @Produces(APPLICATION_JSON)
+    @Get("/v1/payments/{paymentId}/refunds")
+    @Produces(MediaType.APPLICATION_JSON)
     @Operation(security = {@SecurityRequirement(name = "BearerAuth")},
             operationId = "Get all refunds for a payment",
             summary = "Get information about a payment’s refunds",
@@ -84,8 +89,8 @@ public class PaymentRefundsResource {
                             content = @Content(schema = @Schema(implementation = RequestError.class)))
             }
     )
-    public RefundsResponse getRefunds(@Parameter(hidden = true) @Auth Account account,
-                                      @PathParam("paymentId") @Parameter(name = "paymentId", 
+    public RefundsResponse getRefunds(@Parameter(hidden = true) Account account,
+                                      @PathVariable("paymentId") @Parameter(name = "paymentId", 
                                               description = "The unique `payment_id` of the payment you want a list of refunds for.") 
                                       String paymentId) {
         
@@ -94,9 +99,7 @@ public class PaymentRefundsResource {
         return refundsResponse;
     }
 
-    @GET
-    @Timed
-    @Path("/{refundId}")
+    @Get("/v1/payments/{paymentId}/refunds/{refundId}")
     @Operation(security = {@SecurityRequirement(name = "BearerAuth")},
             operationId = "Get a payment refund",
             summary = "Check the status of a refund",
@@ -114,15 +117,15 @@ public class PaymentRefundsResource {
                             content = @Content(schema = @Schema(implementation = RequestError.class)))
             }
     )
-    @Produces(APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
     public RefundResponse getRefundById(@Parameter(hidden = true)
-                                        @Auth Account account,
-                                        @PathParam("paymentId") @Parameter(name = "paymentId",
+                                        Account account,
+                                        @PathVariable("paymentId") @Parameter(name = "paymentId",
                                                 description = "The unique `payment_id` of the payment you want to view a refund of.") String paymentId,
-                                        @PathParam("refundId") @Parameter(name = "refundId",
+                                        @PathVariable("refundId") @Parameter(name = "refundId",
                                                 description = "The unique `refund_id` of the refund you want to view. " + 
                                                         "If one payment has multiple refunds, each refund has a different `refund_id`.") String refundId,
-                                        @Parameter(hidden = true) @HeaderParam("X-Ledger") String strategyName) {
+                                        @Parameter(hidden = true) @Nullable @Header("X-Ledger") String strategyName) {
 
         var strategy = new GetPaymentRefundStrategy(strategyName, account, paymentId, refundId, getPaymentRefundService);
         RefundResponse refundResponse = strategy.validateAndExecute();
@@ -130,10 +133,9 @@ public class PaymentRefundsResource {
         return refundResponse;
     }
 
-    @POST
-    @Timed
-    @Produces(APPLICATION_JSON)
-    @Consumes(APPLICATION_JSON)
+    @Post("/v1/payments/{paymentId}/refunds")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
     @Operation(security = {@SecurityRequirement(name = "BearerAuth")},
             operationId = "Submit a refund for a payment",
             summary = "Refund a payment",
@@ -153,13 +155,13 @@ public class PaymentRefundsResource {
                             content = @Content(schema = @Schema(implementation = RequestError.class)))
             }
     )
-    public Response submitRefund(@Parameter(hidden = true) @Auth Account account,
-                                 @PathParam("paymentId") @Parameter(name = "paymentId",
+    public HttpResponse<RefundResponse> submitRefund(@Parameter(hidden = true) Account account,
+                                 @PathVariable("paymentId") @Parameter(name = "paymentId",
                                          description = "The unique `payment_id` of the payment you want to refund.") String paymentId,
-                                 @Parameter(required = true, description = "requestPayload")
-                                 CreatePaymentRefundRequest requestPayload) {
+                                 HttpRequest<?> request) throws IOException {
+        CreatePaymentRefundRequest requestPayload = requestEntityReader.read(request, CreatePaymentRefundRequest.class);
         
         RefundResponse refundResponse = createRefundService.createRefund(account, paymentId, requestPayload);
-        return Response.accepted(refundResponse).build();
+        return HttpResponse.accepted().body(refundResponse);
     }
 }

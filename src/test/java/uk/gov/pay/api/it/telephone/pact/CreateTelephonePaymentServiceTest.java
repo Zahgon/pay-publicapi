@@ -1,16 +1,14 @@
 package uk.gov.pay.api.it.telephone.pact;
 
-import au.com.dius.pact.consumer.junit.PactVerification;
 import org.apache.commons.lang3.tuple.Pair;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
-import uk.gov.pay.api.app.RestClientFactory;
+import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.pay.api.app.RestClient;
 import uk.gov.pay.api.app.config.PublicApiConfig;
-import uk.gov.pay.api.app.config.RestClientConfig;
 import uk.gov.pay.api.auth.Account;
 import uk.gov.pay.api.model.TokenPaymentType;
 import uk.gov.pay.api.model.telephone.CreateTelephonePaymentRequest;
@@ -19,40 +17,39 @@ import uk.gov.pay.api.model.telephone.Supplemental;
 import uk.gov.pay.api.model.telephone.TelephonePaymentResponse;
 import uk.gov.pay.api.service.ConnectorUriGenerator;
 import uk.gov.pay.api.service.telephone.CreateTelephonePaymentService;
-import uk.gov.service.payments.commons.testing.pact.consumers.Pacts;
-import uk.gov.service.payments.commons.testing.pact.consumers.PayPactProviderRule;
+import uk.gov.pay.api.utils.RestClients;
+import uk.gov.pay.api.utils.pact.PactProviderExtension;
+import uk.gov.pay.api.utils.pact.Pacts;
 
-import jakarta.ws.rs.client.Client;
 import java.util.Optional;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class CreateTelephonePaymentServiceTest {
 
     private CreateTelephonePaymentService createTelephonePaymentService;
     private static CreateTelephonePaymentRequest.Builder builder = new CreateTelephonePaymentRequest.Builder();
 
-    @Rule
-    public PayPactProviderRule connectorRule = new PayPactProviderRule("connector", this);
+    @RegisterExtension
+    public PactProviderExtension connectorRule = new PactProviderExtension("connector");
 
     @Mock
     private PublicApiConfig configuration;
 
-    @Before
+    @BeforeEach
     public void setup() {
         when(configuration.getConnectorUrl()).thenReturn(connectorRule.getUrl()); // We will actually send real requests here, which will be intercepted by pact        
 
         ConnectorUriGenerator connectorUriGenerator = new ConnectorUriGenerator(configuration);
-        Client client = RestClientFactory.buildClient(new RestClientConfig(false));
+        RestClient client = RestClients.newRestClient(false);
 
         createTelephonePaymentService = new CreateTelephonePaymentService(client, connectorUriGenerator);
     }
 
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-create-telephone-payment-notification"})
     public void testCreatePaymentWithMetadata() {
         Account account = new Account("123456", TokenPaymentType.CARD, "a-token-link");

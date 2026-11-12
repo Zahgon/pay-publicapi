@@ -7,8 +7,10 @@ import uk.gov.pay.api.model.PaymentEventsResponse;
 import uk.gov.pay.api.model.TransactionEvents;
 
 import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.net.URI;
 
+@Singleton
 public class GetPaymentEventsService {
 
     private final PublicApiUriGenerator publicApiUriGenerator;

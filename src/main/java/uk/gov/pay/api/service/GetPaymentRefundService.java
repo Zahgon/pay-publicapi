@@ -8,7 +8,9 @@ import uk.gov.pay.api.model.RefundResponse;
 import uk.gov.pay.api.model.ledger.RefundTransactionFromLedger;
 
 import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 
+@Singleton
 public class GetPaymentRefundService {
 
     private final ConnectorService connectorService;

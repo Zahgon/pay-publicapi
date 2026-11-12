@@ -1,37 +1,36 @@
 package uk.gov.pay.api.exception.mapper;
 
 import com.google.common.base.CaseFormat;
-import io.dropwizard.jersey.validation.JerseyViolationException;
+import io.micronaut.http.HttpResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.validator.constraints.Length;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.api.model.RequestError;
 
-import jakarta.annotation.Priority;
+import jakarta.inject.Singleton;
 import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Path;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.ext.ExceptionMapper;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static uk.gov.pay.api.model.RequestError.Code.CREATE_PAYMENT_HEADER_VALIDATION_ERROR;
 import static uk.gov.pay.api.model.RequestError.Code.CREATE_PAYMENT_MISSING_FIELD_ERROR;
 import static uk.gov.pay.api.model.RequestError.Code.CREATE_PAYMENT_VALIDATION_ERROR;
-import static uk.gov.pay.api.model.RequestError.aRequestError;
 import static uk.gov.pay.api.model.RequestError.aHeaderRequestError;
+import static uk.gov.pay.api.model.RequestError.aRequestError;
 
-@Priority(1)
-public class ViolationExceptionMapper implements ExceptionMapper<JerseyViolationException> {
+@Singleton
+public class ViolationExceptionMapper extends SafeExceptionMapper<ConstraintViolationException> {
     private static final Logger LOGGER = LoggerFactory.getLogger(ViolationExceptionMapper.class);
     private static final Pattern HEADER_VIOLATION_EXCEPTION_MESSAGE = Pattern.compile("Header \\[(.*)\\] .*");
 
     @Override
-    public Response toResponse(JerseyViolationException exception) {
+    protected HttpResponse<?> toResponse(ConstraintViolationException exception) {
         LOGGER.info(exception.getMessage());
         ConstraintViolation<?> firstException = exception.getConstraintViolations().iterator().next();
 
@@ -44,9 +43,7 @@ public class ViolationExceptionMapper implements ExceptionMapper<JerseyViolation
             requestError = getFieldNameRequestError(firstException);
         }
         
-        return Response.status(422)
-                .entity(requestError)
-                .build();
+        return ErrorResponses.of(422, requestError);
     }
 
     private static boolean isLengthViolationOrPatternViolation(ConstraintViolation<?> firstException) {

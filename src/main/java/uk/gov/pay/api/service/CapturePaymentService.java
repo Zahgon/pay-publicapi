@@ -1,28 +1,26 @@
 package uk.gov.pay.api.service;
 
+import uk.gov.pay.api.app.RestClient;
+import uk.gov.pay.api.app.RestClientResponse;
 import uk.gov.pay.api.auth.Account;
 
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.Entity;
-import jakarta.ws.rs.core.Response;
+import jakarta.inject.Singleton;
 
+@Singleton
 public class CapturePaymentService {
 
-    private final Client client;
+    private final RestClient client;
     private final ConnectorUriGenerator connectorUriGenerator;
 
     @Inject
-    public CapturePaymentService(Client client, ConnectorUriGenerator connectorUriGenerator) {
+    public CapturePaymentService(RestClient client, ConnectorUriGenerator connectorUriGenerator) {
         this.client = client;
         this.connectorUriGenerator = connectorUriGenerator;
     }
 
-    public Response capture(Account account, String chargeId) {
-        return client
-                .target(connectorUriGenerator.captureURI(account, chargeId))
-                .request()
-                .post(Entity.json("{}"));
+    public RestClientResponse capture(Account account, String chargeId) {
+        return client.post(connectorUriGenerator.captureURI(account, chargeId), "{}");
     }
 
 }

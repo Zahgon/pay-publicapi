@@ -1,6 +1,12 @@
 package uk.gov.pay.api.resources;
 
-import com.codahale.metrics.annotation.Timed;
+import io.micronaut.http.HttpRequest;
+import io.micronaut.http.HttpResponse;
+import io.micronaut.http.MediaType;
+import io.micronaut.http.annotation.Consumes;
+import io.micronaut.http.annotation.Controller;
+import io.micronaut.http.annotation.Post;
+import io.micronaut.http.annotation.Produces;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -11,37 +17,35 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.api.model.AuthorisationRequest;
 import uk.gov.pay.api.model.RequestError;
+import uk.gov.pay.api.resources.binding.RequestEntityReader;
 import uk.gov.pay.api.resources.error.ApiErrorResponse;
 import uk.gov.pay.api.service.AuthorisationService;
+import uk.gov.pay.api.validation.RequestValidator;
 
 import jakarta.inject.Inject;
-import jakarta.validation.Valid;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.Response;
+import java.io.IOException;
 
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
-
-@Path("/")
-@Produces({"application/json"})
+@Controller
+@Produces(MediaType.APPLICATION_JSON)
 @Tag(name = "Authorise card payments")
 public class AuthorisationResource {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthorisationResource.class);
     private final AuthorisationService authorisationService;
+    private final RequestEntityReader requestEntityReader;
+    private final RequestValidator requestValidator;
 
     @Inject
-    public AuthorisationResource(AuthorisationService authorisationService) {
+    public AuthorisationResource(AuthorisationService authorisationService, RequestEntityReader requestEntityReader,
+                                 RequestValidator requestValidator) {
         this.authorisationService = authorisationService;
+        this.requestEntityReader = requestEntityReader;
+        this.requestValidator = requestValidator;
     }
 
-    @POST
-    @Timed
-    @Path("/v1/auth")
-    @Consumes(APPLICATION_JSON)
-    @Produces(APPLICATION_JSON)
+    @Post("/v1/auth")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
     @Operation(operationId = "Authorise a MOTO payment",
             summary = "Send card details to authorise a MOTO payment",
             description = "You can use this endpoint to [authorise payments](https://docs.payments.service.gov.uk/moto_payments/moto_send_card_details_api/) you have created with `authorisation_mode` set to `moto_api`.",
@@ -58,8 +62,9 @@ public class AuthorisationResource {
                             content = @Content(schema = @Schema(implementation = RequestError.class)))
             }
     )
-    public Response authorisePayment(@Parameter(required = true)
-                                     @Valid AuthorisationRequest authorisationRequest) {
+    public HttpResponse<?> authorisePayment(HttpRequest<?> request) throws IOException {
+        AuthorisationRequest authorisationRequest = requestEntityReader.readOptional(request, AuthorisationRequest.class);
+        requestValidator.validate(authorisationRequest);
         return authorisationService.authoriseRequest(authorisationRequest);
     }
 }

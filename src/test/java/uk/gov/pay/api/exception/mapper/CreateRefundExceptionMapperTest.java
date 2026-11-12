@@ -1,16 +1,16 @@
 package uk.gov.pay.api.exception.mapper;
 
+import io.micronaut.http.HttpResponse;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.pay.api.app.RestClientResponse;
 import uk.gov.pay.api.exception.ConnectorResponseErrorException;
 import uk.gov.pay.api.exception.CreateRefundException;
 import uk.gov.pay.api.model.RequestError;
 import uk.gov.service.payments.commons.model.ErrorIdentifier;
-
-import jakarta.ws.rs.core.Response;
 
 import java.util.Collections;
 
@@ -27,7 +27,7 @@ import static uk.gov.service.payments.commons.model.ErrorIdentifier.REFUND_NOT_A
 class CreateRefundExceptionMapperTest {
 
     @Mock
-    private Response mockResponse;
+    private RestClientResponse mockResponse;
 
     private final CreateRefundExceptionMapper mapper = new CreateRefundExceptionMapper();
 
@@ -48,10 +48,10 @@ class CreateRefundExceptionMapperTest {
         when(mockResponse.readEntity(ConnectorResponseErrorException.ConnectorErrorResponse.class))
                 .thenReturn(new ConnectorResponseErrorException.ConnectorErrorResponse(errorIdentifier, reason, Collections.emptyList()));
 
-        Response returnedResponse = mapper.toResponse(new CreateRefundException(mockResponse));
-        RequestError returnedError = (RequestError) returnedResponse.getEntity();
+        HttpResponse<?> returnedResponse = mapper.handle(null, new CreateRefundException(mockResponse));
+        RequestError returnedError = (RequestError) returnedResponse.body();
 
-        assertThat(returnedResponse.getStatus(), is(expectedStatusCode));
+        assertThat(returnedResponse.code(), is(expectedStatusCode));
         assertThat(returnedError.getDescription(), is(expectedDescription));
         assertThat(returnedError.getCode(), is(expectedErrorCode));
     }

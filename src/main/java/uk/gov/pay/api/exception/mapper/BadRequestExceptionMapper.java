@@ -1,26 +1,25 @@
 package uk.gov.pay.api.exception.mapper;
 
+import io.micronaut.http.HttpResponse;
+import io.micronaut.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.api.exception.BadRequestException;
 import uk.gov.pay.api.model.RequestError;
 
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.Response.Status;
-import jakarta.ws.rs.ext.ExceptionMapper;
+import jakarta.inject.Singleton;
 
-public class BadRequestExceptionMapper implements ExceptionMapper<BadRequestException> {
+@Singleton
+public class BadRequestExceptionMapper extends SafeExceptionMapper<BadRequestException> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BadRequestExceptionMapper.class);
 
     @Override
-    public Response toResponse(BadRequestException exception) {
+    protected HttpResponse<?> toResponse(BadRequestException exception) {
 
         RequestError requestError = exception.getRequestError();
         LOGGER.debug("Bad Request exception {}", requestError);
 
-        return Response.status(Status.BAD_REQUEST)
-                .entity(exception.getRequestError())
-                .build();
+        return ErrorResponses.of(HttpStatus.BAD_REQUEST, exception.getRequestError());
     }
 }

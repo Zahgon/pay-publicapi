@@ -4,9 +4,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import uk.gov.pay.api.app.RestClientResponse;
 import uk.gov.service.payments.commons.model.ErrorIdentifier;
 
-import jakarta.ws.rs.core.Response;
 import java.util.List;
 
 public class ConnectorResponseErrorException extends RuntimeException {
@@ -16,11 +16,10 @@ public class ConnectorResponseErrorException extends RuntimeException {
     private ConnectorErrorResponse error;
     private int status;
 
-    public ConnectorResponseErrorException(Response response) {
+    public ConnectorResponseErrorException(RestClientResponse response) {
         super(response.toString());
         this.status = response.getStatus();
         this.error = readError(response);
-        response.close();
     }
 
     ConnectorResponseErrorException(ConnectorResponseErrorException exception) {
@@ -52,7 +51,7 @@ public class ConnectorResponseErrorException extends RuntimeException {
         return this.error != null && this.error.getReason() != null;
     }
 
-    private ConnectorErrorResponse readError(Response response) {
+    private ConnectorErrorResponse readError(RestClientResponse response) {
         ConnectorErrorResponse connectorError = null;
         try {
             connectorError = response.readEntity(ConnectorErrorResponse.class);

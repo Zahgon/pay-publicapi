@@ -8,8 +8,8 @@ import uk.gov.pay.api.utils.PublicAuthMockClientJUnit5;
 import uk.gov.pay.api.utils.mocks.ConnectorMockClientJUnit5;
 import uk.gov.pay.api.utils.mocks.LedgerMockClientJUnit5;
 
+import static io.micronaut.http.HttpHeaders.AUTHORIZATION;
 import static io.restassured.RestAssured.given;
-import static jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.Is.is;

@@ -1,86 +1,74 @@
 package uk.gov.pay.api.filter;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.commons.lang3.StringUtils;
+import io.micronaut.core.annotation.Nullable;
+import io.micronaut.core.order.Ordered;
+import io.micronaut.http.HttpRequest;
+import io.micronaut.http.HttpResponse;
+import io.micronaut.http.MediaType;
+import io.micronaut.http.annotation.RequestFilter;
+import io.micronaut.http.annotation.ServerFilter;
+import io.micronaut.http.filter.ServerFilterPhase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.api.auth.Account;
+import uk.gov.pay.api.auth.AccountArgumentBinder;
 import uk.gov.pay.api.filter.ratelimit.RateLimitException;
 import uk.gov.pay.api.filter.ratelimit.RateLimiter;
-import uk.gov.pay.api.resources.error.ApiErrorResponse.Code;
-
-import jakarta.annotation.Priority;
-import jakarta.inject.Inject;
-import jakarta.ws.rs.Priorities;
-import jakarta.ws.rs.WebApplicationException;
-import jakarta.ws.rs.container.ContainerRequestContext;
-import jakarta.ws.rs.container.ContainerRequestFilter;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.Variant;
-import jakarta.ws.rs.ext.Provider;
-import java.io.IOException;
-import java.util.Optional;
+import uk.gov.pay.api.resources.error.ApiErrorResponse;
 
 import static uk.gov.pay.api.resources.error.ApiErrorResponse.anApiErrorResponse;
 
 /**
- * Allow only a certain number of requests from the same source (given by the Authorization Header)
- * within the given time configured in the RateLimiter. See {@link RateLimiter}
+ * Allow only a certain number of requests from the same source (the authenticated account) within the time configured
+ * in the {@link RateLimiter}.
  * <p>
  * 429 Too Many Requests will be returned when rate limit is reached.
  */
-@Provider
-@Priority(Priorities.USER + 1000)
-public class RateLimiterFilter implements ContainerRequestFilter {
+@ServerFilter(ServerFilter.MATCH_ALL_PATTERN)
+public class RateLimiterFilter implements Ordered {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RateLimiterFilter.class);
     private static final int TOO_MANY_REQUESTS_STATUS_CODE = 429;
     private static final String UTF8_CHARACTER_ENCODING = "utf-8";
 
     private final RateLimiter rateLimiter;
-    private ObjectMapper objectMapper;
 
     /**
      * @param rateLimiter Limiter in number of requests per given time coming from the same source (Authorization)
      */
-    @Inject
-    public RateLimiterFilter(RateLimiter rateLimiter, ObjectMapper objectMapper) {
+    public RateLimiterFilter(RateLimiter rateLimiter) {
         this.rateLimiter = rateLimiter;
-        this.objectMapper = objectMapper;
     }
 
-    private void setTooManyRequestsError() throws IOException {
-        String errorResponse = objectMapper.writeValueAsString(anApiErrorResponse(Code.TOO_MANY_REQUESTS_ERROR));
-        Response.ResponseBuilder builder = Response.status(TOO_MANY_REQUESTS_STATUS_CODE)
-                .entity(errorResponse)
-                .encoding(UTF8_CHARACTER_ENCODING)
-                .variant(new Variant(MediaType.APPLICATION_JSON_TYPE, "", UTF8_CHARACTER_ENCODING));
-
-        throw new WebApplicationException(builder.build());
-    }
-
-    @Override
-    public void filter(ContainerRequestContext requestContext) throws IOException {
-        if ("healthcheck".equals(requestContext.getUriInfo().getPath())) {
-            return;
+    @RequestFilter
+    @Nullable
+    public HttpResponse<?> filter(HttpRequest<?> request) {
+        if ("/healthcheck".equals(request.getPath())) {
+            return null;
         }
 
-        String accountId = getAccountId(requestContext);
-        RateLimiterKey key = RateLimiterKey.from(requestContext, accountId);
+        String accountId = request.getAttribute(AccountArgumentBinder.ACCOUNT_ATTRIBUTE, Account.class)
+                .map(Account::accountId)
+                .orElse("");
+        RateLimiterKey key = RateLimiterKey.from(request, accountId);
         try {
             rateLimiter.checkRateOf(accountId, key);
         } catch (RateLimitException e) {
             LOGGER.info("Rate limit reached for current service [account - {}, method - {}]. Sending response '429 Too Many Requests'",
                     accountId, key.getMethod());
-            setTooManyRequestsError();
+            return HttpResponse.status(io.micronaut.http.HttpStatus.valueOf(TOO_MANY_REQUESTS_STATUS_CODE))
+                    .contentType(MediaType.APPLICATION_JSON_TYPE)
+                    .header("Content-Encoding", UTF8_CHARACTER_ENCODING)
+                    .body(anApiErrorResponse(ApiErrorResponse.Code.TOO_MANY_REQUESTS_ERROR));
         }
+        return null;
     }
 
-    private String getAccountId(ContainerRequestContext requestContext) {
-        Account account = (Account) requestContext.getSecurityContext().getUserPrincipal();
-        return Optional.ofNullable(account)
-                .map(Account::accountId)
-                .orElse(StringUtils.EMPTY);
+    /**
+     * After authentication and after the logging context is filled in.
+     */
+    @Override
+    public int getOrder() {
+        return ServerFilterPhase.SECURITY.after() + 10;
     }
 }

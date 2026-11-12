@@ -1,7 +1,6 @@
 package uk.gov.pay.api.exception.mapper;
 
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.ext.ExceptionMapper;
+import io.micronaut.http.HttpResponse;
 import org.eclipse.jetty.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,8 +8,10 @@ import uk.gov.pay.api.exception.CreateChargeException;
 import uk.gov.pay.api.model.RequestError;
 import uk.gov.service.payments.commons.model.ErrorIdentifier;
 
-import static jakarta.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import jakarta.inject.Singleton;
+
+import static io.micronaut.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static io.micronaut.http.HttpStatus.NOT_FOUND;
 import static uk.gov.pay.api.model.CreateCardPaymentRequest.SET_UP_AGREEMENT_FIELD_NAME;
 import static uk.gov.pay.api.model.RequestError.Code.ACCOUNT_DISABLED;
 import static uk.gov.pay.api.model.RequestError.Code.ACCOUNT_NOT_LINKED_WITH_PSP;
@@ -31,17 +32,18 @@ import static uk.gov.pay.api.model.RequestError.Code.RECURRING_CARD_PAYMENTS_NOT
 import static uk.gov.pay.api.model.RequestError.Code.RESOURCE_ACCESS_FORBIDDEN;
 import static uk.gov.pay.api.model.RequestError.aRequestError;
 
-public class CreateChargeExceptionMapper implements ExceptionMapper<CreateChargeException> {
+@Singleton
+public class CreateChargeExceptionMapper extends SafeExceptionMapper<CreateChargeException> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CreateChargeExceptionMapper.class);
 
     @Override
-    public Response toResponse(CreateChargeException exception) {
+    protected HttpResponse<?> toResponse(CreateChargeException exception) {
 
         RequestError requestError;
         int statusCode = HttpStatus.INTERNAL_SERVER_ERROR_500;
 
-        if (exception.getErrorStatus() == NOT_FOUND.getStatusCode()) {
+        if (exception.getErrorStatus() == NOT_FOUND.getCode()) {
             if (exception.getErrorIdentifier() == ErrorIdentifier.AGREEMENT_NOT_FOUND) {
                 statusCode = HttpStatus.BAD_REQUEST_400;
                 requestError = aRequestError("set_up_agreement", CREATE_PAYMENT_AGREEMENT_ID_ERROR);
@@ -135,6 +137,6 @@ public class CreateChargeExceptionMapper implements ExceptionMapper<CreateCharge
             }
         }
 
-        return Response.status(statusCode).entity(requestError).build();
+        return ErrorResponses.of(statusCode, requestError);
     }
 }

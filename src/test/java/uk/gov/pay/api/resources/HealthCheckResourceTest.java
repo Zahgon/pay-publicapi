@@ -1,57 +1,50 @@
 package uk.gov.pay.api.resources;
 
-import com.codahale.metrics.health.HealthCheck;
-import com.codahale.metrics.health.HealthCheckRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.jayway.jsonassert.JsonAssert;
-import io.dropwizard.core.setup.Environment;
-import org.junit.jupiter.api.BeforeEach;
+import io.micronaut.http.HttpResponse;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.pay.api.healthcheck.HealthCheck;
 
-import jakarta.ws.rs.core.Response;
-import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.Is.is;
-import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
 public class HealthCheckResourceTest {
-    @Mock
-    private Environment environment;
-
-    @Mock
-    private HealthCheckRegistry healthCheckRegistry;
 
     private HealthCheckResource resource;
 
-    @BeforeEach
-    public void setup() {
-        when(environment.healthChecks()).thenReturn(healthCheckRegistry);
-        resource = new HealthCheckResource(environment);
+    private static HealthCheck healthCheck(String name, boolean healthy) {
+        return new HealthCheck() {
+            @Override
+            public String name() {
+                return name;
+            }
+
+            @Override
+            public boolean isHealthy() {
+                return healthy;
+            }
+        };
     }
 
     @Test
     public void checkHealthCheck_isUnHealthy() throws JsonProcessingException {
-        SortedMap<String,HealthCheck.Result> map = new TreeMap<>();
-        map.put("ping", HealthCheck.Result.unhealthy("application is unavailable"));
-        map.put("deadlocks", HealthCheck.Result.unhealthy("no new threads available"));
+        resource = new HealthCheckResource(List.of(
+                healthCheck("ping", false),
+                healthCheck("deadlocks", false)));
 
-        when(healthCheckRegistry.runHealthChecks()).thenReturn(map);
+        HttpResponse<Map<String, Map<String, Boolean>>> response = resource.healthCheck();
 
-        Response response = resource.healthCheck();
-
-        assertThat(response.getStatus(), is(503));
+        assertThat(response.code(), is(503));
 
         ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
-        String body = ow.writeValueAsString(response.getEntity());
+        String body = ow.writeValueAsString(response.body());
         JsonAssert.with(body)
                 .assertThat("$.*", hasSize(2))
                 .assertThat("$.ping.healthy", is(false))
@@ -60,18 +53,16 @@ public class HealthCheckResourceTest {
 
     @Test
     public void checkHealthCheck_isHealthy() throws JsonProcessingException {
-        SortedMap<String,HealthCheck.Result> map = new TreeMap<>();
-        map.put("ping", HealthCheck.Result.healthy());
-        map.put("deadlocks", HealthCheck.Result.healthy());
+        resource = new HealthCheckResource(List.of(
+                healthCheck("ping", true),
+                healthCheck("deadlocks", true)));
 
-        when(healthCheckRegistry.runHealthChecks()).thenReturn(map);
+        HttpResponse<Map<String, Map<String, Boolean>>> response = resource.healthCheck();
 
-        Response response = resource.healthCheck();
-
-        assertThat(response.getStatus(), is(200));
+        assertThat(response.code(), is(200));
 
         ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
-        String body = ow.writeValueAsString(response.getEntity());
+        String body = ow.writeValueAsString(response.body());
 
         JsonAssert.with(body)
                 .assertThat("$.*", hasSize(2))
@@ -81,18 +72,16 @@ public class HealthCheckResourceTest {
 
     @Test
     public void checkHealthCheck_isUnhealthyIfPartiallyHealthy() throws JsonProcessingException {
-        SortedMap<String,HealthCheck.Result> map = new TreeMap<>();
-        map.put("ping", HealthCheck.Result.healthy());
-        map.put("deadlocks", HealthCheck.Result.unhealthy("no new threads available"));
+        resource = new HealthCheckResource(List.of(
+                healthCheck("ping", true),
+                healthCheck("deadlocks", false)));
 
-        when(healthCheckRegistry.runHealthChecks()).thenReturn(map);
+        HttpResponse<Map<String, Map<String, Boolean>>> response = resource.healthCheck();
 
-        Response response = resource.healthCheck();
-
-        assertThat(response.getStatus(), is(503));
+        assertThat(response.code(), is(503));
 
         ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
-        String body = ow.writeValueAsString(response.getEntity());
+        String body = ow.writeValueAsString(response.body());
 
         JsonAssert.with(body)
                 .assertThat("$.*", hasSize(2))

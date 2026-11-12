@@ -7,9 +7,11 @@ import uk.gov.pay.api.model.RefundsResponse;
 import uk.gov.pay.api.model.ledger.RefundsFromLedger;
 
 import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Singleton
 public class GetPaymentRefundsService {
 
     private final LedgerService ledgerService;

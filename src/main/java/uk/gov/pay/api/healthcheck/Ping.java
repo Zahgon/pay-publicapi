@@ -1,11 +1,17 @@
 package uk.gov.pay.api.healthcheck;
 
-import com.codahale.metrics.health.HealthCheck;
+import jakarta.inject.Singleton;
 
-public class Ping extends HealthCheck {
+@Singleton
+public class Ping implements HealthCheck {
 
     @Override
-    protected Result check() {
-        return Result.healthy();
+    public String name() {
+        return "ping";
+    }
+
+    @Override
+    public boolean isHealthy() {
+        return true;
     }
 }

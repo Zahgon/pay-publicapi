@@ -6,10 +6,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.api.app.config.RateLimiterConfig;
 import uk.gov.pay.api.filter.RateLimiterKey;
+import uk.gov.pay.api.utils.HttpMethods;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import jakarta.ws.rs.HttpMethod;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
@@ -56,7 +56,7 @@ public class LocalRateLimiter {
     }
 
     private int getNoOfRequestsForMethod(String method) {
-        if (HttpMethod.POST.equals(method)) {
+        if (HttpMethods.POST.equals(method)) {
             return noOfReqForPostPerNode;
         }
         return noOfReqPerNode;

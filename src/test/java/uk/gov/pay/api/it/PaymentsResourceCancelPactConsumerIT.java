@@ -1,54 +1,53 @@
 package uk.gov.pay.api.it;
 
-import au.com.dius.pact.consumer.junit.PactVerification;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
-import io.dropwizard.testing.junit.DropwizardAppRule;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import org.apache.hc.core5.http.HttpStatus;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import uk.gov.pay.api.app.PublicApi;
-import uk.gov.pay.api.app.config.PublicApiConfig;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import uk.gov.pay.api.auth.Account;
+import uk.gov.pay.api.it.support.PublicApiTestApp;
 import uk.gov.pay.api.utils.ApiKeyGenerator;
-import uk.gov.service.payments.commons.testing.pact.consumers.Pacts;
-import uk.gov.service.payments.commons.testing.pact.consumers.PayPactProviderRule;
+import uk.gov.pay.api.utils.pact.PactProviderExtension;
+import uk.gov.pay.api.utils.pact.Pacts;
 
-import static io.dropwizard.testing.ConfigOverride.config;
-import static io.dropwizard.testing.ResourceHelpers.resourceFilePath;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
+import static io.micronaut.http.HttpHeaders.AUTHORIZATION;
 import static io.restassured.RestAssured.given;
-import static jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION;
 import static org.hamcrest.Matchers.is;
 import static uk.gov.pay.api.model.TokenPaymentType.CARD;
 import static uk.gov.pay.api.utils.WiremockStubbing.stubPublicAuthV1ApiAuth;
-import static uk.gov.service.payments.commons.testing.port.PortFactory.findFreePort;
 
 public class PaymentsResourceCancelPactConsumerIT {
 
     private static final String API_KEY = ApiKeyGenerator.apiKeyValueOf("TEST_BEARER_TOKEN", "qwer9yuhgf");
 
-    private final int publicAuthPort = findFreePort();
-    
-    @Rule
-    public WireMockRule publicAuth = new WireMockRule(publicAuthPort);
+    @RegisterExtension
+    public WireMockExtension publicAuth = WireMockExtension.newInstance()
+            .options(wireMockConfig().dynamicPort())
+            .build();
 
-    @Rule
-    public PayPactProviderRule connector = new PayPactProviderRule("connector", this);
+    @RegisterExtension
+    public PactProviderExtension connector = new PactProviderExtension("connector");
 
-    @Rule
-    public DropwizardAppRule<PublicApiConfig> app = new DropwizardAppRule<>(
-            PublicApi.class,
-            resourceFilePath("config/test-config.yaml"),
-            config("connectorUrl", "http://localhost:" + connector.getConfig().getPort()),
-            config("publicAuthUrl", "http://localhost:" + publicAuthPort + "/v1/api/auth"));
+    private PublicApiTestApp app;
 
-    @Before
+    @BeforeEach
     public void setup() throws Exception {
+        app = PublicApiTestApp.withOverrides(
+                "publicapi.connector-url", "http://localhost:" + connector.getPort(),
+                "publicapi.public-auth-url", publicAuth.baseUrl() + "/v1/api/auth");
+        app.before();
         stubPublicAuthV1ApiAuth(publicAuth, new Account("123456", CARD, "a-token-link"), API_KEY);
     }
 
+    @AfterEach
+    public void stopApp() {
+        app.after();
+    }
+
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-cancel-already-canceled-payment"})
     public void cancelAPaymentThatIsAlreadyCanceled() {
         given().port(app.getLocalPort())

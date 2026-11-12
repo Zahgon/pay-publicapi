@@ -4,6 +4,8 @@ import com.google.common.collect.ImmutableMap;
 import com.google.gson.GsonBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import uk.gov.pay.api.app.RestClient;
+import uk.gov.pay.api.app.RestClientResponse;
 import uk.gov.pay.api.app.config.PublicApiConfig;
 import uk.gov.pay.api.auth.Account;
 import uk.gov.pay.api.exception.CreateRefundException;
@@ -13,29 +15,27 @@ import uk.gov.pay.api.model.RefundFromConnector;
 import uk.gov.pay.api.model.RefundResponse;
 import uk.gov.pay.api.model.RefundSummary;
 import uk.gov.pay.api.resources.GetOnePaymentStrategy;
+import uk.gov.pay.api.utils.UriTemplate;
 
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.core.Response;
+import jakarta.inject.Singleton;
 import java.util.Optional;
 
 import static java.lang.String.format;
-import static jakarta.ws.rs.client.Entity.json;
-import static jakarta.ws.rs.core.Response.Status.ACCEPTED;
-import static jakarta.ws.rs.core.UriBuilder.fromPath;
 
+@Singleton
 public class CreateRefundService {
 
     private static final Logger logger = LoggerFactory.getLogger(CreateRefundService.class);
 
     private final GetPaymentService getPaymentService;
-    private final Client client;
+    private final RestClient client;
     private final String connectorUrl;
     private final String baseUrl;
 
     @Inject
     public CreateRefundService(GetPaymentService getPaymentService,
-                               Client client,
+                               RestClient client,
                                PublicApiConfig configuration) {
         this.getPaymentService = getPaymentService;
         this.client = client;
@@ -54,12 +54,10 @@ public class CreateRefundService {
                 "refund_amount_available", refundAmountAvailable);
         String connectorPayload = new GsonBuilder().create().toJson(payloadMap);
 
-        Response connectorResponse = client
-                .target(getConnectorUrl(format("/v1/api/accounts/%s/charges/%s/refunds", account.accountId(), paymentId)))
-                .request()
-                .post(json(connectorPayload));
+        RestClientResponse connectorResponse = client.post(
+                getConnectorUrl(format("/v1/api/accounts/%s/charges/%s/refunds", account.accountId(), paymentId)), connectorPayload);
 
-        if (connectorResponse.getStatus() != ACCEPTED.getStatusCode()) {
+        if (connectorResponse.getStatus() != 202) {
             throw new CreateRefundException(connectorResponse);
         }
 
@@ -78,6 +76,6 @@ public class CreateRefundService {
     }
 
     private String getConnectorUrl(String urlPath) {
-        return fromPath(connectorUrl).path(urlPath).toString();
+        return UriTemplate.fromPath(connectorUrl).path(urlPath).toString();
     }
 }

@@ -6,10 +6,10 @@ import uk.gov.pay.api.model.TokenPaymentType;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.matching;
-import static jakarta.ws.rs.core.HttpHeaders.ACCEPT;
-import static jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION;
-import static jakarta.ws.rs.core.HttpHeaders.CONTENT_TYPE;
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
+import static io.micronaut.http.HttpHeaders.ACCEPT;
+import static io.micronaut.http.HttpHeaders.AUTHORIZATION;
+import static io.micronaut.http.HttpHeaders.CONTENT_TYPE;
+import static io.micronaut.http.MediaType.APPLICATION_JSON;
 import static uk.gov.service.payments.commons.model.ErrorIdentifier.AUTH_TOKEN_INVALID;
 
 public class PublicAuthMockClientJUnit5 {

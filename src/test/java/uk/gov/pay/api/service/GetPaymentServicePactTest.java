@@ -1,15 +1,13 @@
 package uk.gov.pay.api.service;
 
-import au.com.dius.pact.consumer.junit.PactVerification;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
-import uk.gov.pay.api.app.RestClientFactory;
+import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.pay.api.app.RestClient;
 import uk.gov.pay.api.app.config.PublicApiConfig;
-import uk.gov.pay.api.app.config.RestClientConfig;
 import uk.gov.pay.api.auth.Account;
 import uk.gov.pay.api.ledger.service.LedgerUriGenerator;
 import uk.gov.pay.api.model.PaymentState;
@@ -17,12 +15,12 @@ import uk.gov.pay.api.model.TokenPaymentType;
 import uk.gov.pay.api.model.Wallet;
 import uk.gov.pay.api.model.links.PaymentWithAllLinks;
 import uk.gov.pay.api.model.links.PostLink;
+import uk.gov.pay.api.utils.RestClients;
+import uk.gov.pay.api.utils.pact.PactProviderExtension;
+import uk.gov.pay.api.utils.pact.Pacts;
 import uk.gov.service.payments.commons.model.AuthorisationMode;
 import uk.gov.service.payments.commons.model.SupportedLanguage;
-import uk.gov.service.payments.commons.testing.pact.consumers.Pacts;
-import uk.gov.service.payments.commons.testing.pact.consumers.PayPactProviderRule;
 
-import jakarta.ws.rs.client.Client;
 import java.util.Collections;
 import java.util.Optional;
 
@@ -33,7 +31,7 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.Is.is;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class GetPaymentServicePactTest {
 
     private static final String ACCOUNT_ID = "123456";
@@ -41,13 +39,13 @@ public class GetPaymentServicePactTest {
 
     private GetPaymentService getPaymentService;
 
-    @Rule
-    public PayPactProviderRule connectorRule = new PayPactProviderRule("connector", this);
+    @RegisterExtension
+    public PactProviderExtension connectorRule = new PactProviderExtension("connector");
 
     @Mock
     private PublicApiConfig mockConfiguration;
 
-    @Before
+    @BeforeEach
     public void setup() {
         when(mockConfiguration.getConnectorUrl()).thenReturn(connectorRule.getUrl());
         when(mockConfiguration.getBaseUrl()).thenReturn("http://publicapi.test.localhost/");
@@ -55,14 +53,13 @@ public class GetPaymentServicePactTest {
         PublicApiUriGenerator publicApiUriGenerator = new PublicApiUriGenerator(mockConfiguration);
         ConnectorUriGenerator connectorUriGenerator = new ConnectorUriGenerator(mockConfiguration);
         LedgerUriGenerator ledgerUriGenerator = new LedgerUriGenerator(mockConfiguration);
-        Client client = RestClientFactory.buildClient(new RestClientConfig(false));
+        RestClient client = RestClients.newRestClient(false);
         getPaymentService = new GetPaymentService(publicApiUriGenerator,
                 new ConnectorService(client, connectorUriGenerator),
                 new LedgerService(client, ledgerUriGenerator));
     }
     
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-get-created-payment"})
     public void testGetPayment() {
         Account account = new Account(ACCOUNT_ID, TokenPaymentType.CARD, "a-token-link");
@@ -99,7 +96,6 @@ public class GetPaymentServicePactTest {
     }
 
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-get-wallet-payment"})
     public void testGetPaymentWithWalletType() {
         Account account = new Account(ACCOUNT_ID, TokenPaymentType.CARD, "a-token-link");
@@ -116,7 +112,6 @@ public class GetPaymentServicePactTest {
     }
     
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-get-capturable-payment"})
     public void testGetCapturablePaymentWithMetadataAndCorporateSurcharge() {
         Account account = new Account(ACCOUNT_ID, TokenPaymentType.CARD, "a-token-link");
@@ -136,7 +131,6 @@ public class GetPaymentServicePactTest {
     }
 
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-get-payment-with-fee-and-net-amount"})
     public void testGetPaymentWithFeeAndNetAmount() {
         Account account = new Account(ACCOUNT_ID, TokenPaymentType.CARD, "a-token-link");
@@ -150,7 +144,6 @@ public class GetPaymentServicePactTest {
     }
 
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-get-rejected-rcp-payment-with-can-retry-true"})
     public void testGetRejectedRecurringPaymentWithCanRetryTrue() {
         Account account = new Account(ACCOUNT_ID, TokenPaymentType.CARD, "a-token-link");
@@ -163,7 +156,6 @@ public class GetPaymentServicePactTest {
     }
 
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-get-motoapi-created-payment"})
     public void testGetMotoApiPayment() {
         Account account = new Account(ACCOUNT_ID, TokenPaymentType.CARD, "a-token-link");
@@ -185,7 +177,6 @@ public class GetPaymentServicePactTest {
     }
 
     @Test
-    @PactVerification({"connector"})
     @Pacts(pacts = {"publicapi-connector-get-payment-with-honoured-corporate-exemption"})
     public void testGetPaymentWithExemptionFromConnector() {
         Account account = new Account(ACCOUNT_ID, TokenPaymentType.CARD, "a-token-link");

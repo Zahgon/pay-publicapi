@@ -4,10 +4,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import io.swagger.v3.oas.annotations.media.Schema;
-import uk.gov.pay.api.model.links.RefundLinksForSearch;
 import uk.gov.pay.api.model.ledger.RefundTransactionFromLedger;
+import uk.gov.pay.api.model.links.RefundLinksForSearch;
+import uk.gov.pay.api.utils.UriTemplate;
 
-import jakarta.ws.rs.core.UriBuilder;
 import java.net.URI;
 
 import static io.swagger.v3.oas.annotations.media.Schema.AccessMode.READ_ONLY;
@@ -90,11 +90,11 @@ public class RefundResponse {
 
     //todo: remove after full refactoring of PaymentRefundsResource (to use service layer) 
     public static RefundResponse valueOf(RefundFromConnector refundEntity, String paymentId, String baseUrl) {
-        URI selfLink = UriBuilder.fromUri(baseUrl)
+        URI selfLink = UriTemplate.fromUri(baseUrl)
                 .path("/v1/payments/{paymentId}/refunds/{refundId}")
                 .build(paymentId, refundEntity.getRefundId());
 
-        URI paymentLink = UriBuilder.fromUri(baseUrl)
+        URI paymentLink = UriTemplate.fromUri(baseUrl)
                 .path("/v1/payments/{paymentId}")
                 .build(paymentId);
 

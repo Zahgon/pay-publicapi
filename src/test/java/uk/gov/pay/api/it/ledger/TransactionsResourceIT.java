@@ -1,18 +1,16 @@
 package uk.gov.pay.api.it.ledger;
 
-
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.google.common.collect.ImmutableMap;
-import io.dropwizard.testing.DropwizardTestSupport;
 import io.restassured.response.ValidatableResponse;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import uk.gov.pay.api.app.PublicApi;
 import uk.gov.pay.api.app.config.PublicApiConfig;
 import uk.gov.pay.api.it.fixtures.PaymentNavigationLinksFixture;
+import uk.gov.pay.api.it.support.PublicApiTestApp;
 import uk.gov.pay.api.model.Address;
 import uk.gov.pay.api.model.AuthorisationSummary;
 import uk.gov.pay.api.model.CardDetailsFromResponse;
@@ -24,11 +22,9 @@ import uk.gov.pay.api.utils.mocks.LedgerMockClientJUnit5;
 import java.util.Map;
 
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
-import static io.dropwizard.testing.ConfigOverride.config;
-import static io.dropwizard.testing.ResourceHelpers.resourceFilePath;
+import static io.micronaut.http.HttpHeaders.AUTHORIZATION;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
-import static jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.Matchers.emptyString;
 import static org.hamcrest.Matchers.notNullValue;
@@ -55,7 +51,7 @@ class TransactionsResourceIT {
             .options(wireMockConfig().dynamicPort())
             .build();
 
-    private static DropwizardTestSupport<PublicApiConfig> app;
+    private static PublicApiTestApp app;
 
     private final PublicAuthMockClientJUnit5 publicAuthMockClient = new PublicAuthMockClientJUnit5(publicAuthServer);
 
@@ -64,12 +60,10 @@ class TransactionsResourceIT {
 
     @BeforeAll
     static void startApp() throws Exception {
-        app = new DropwizardTestSupport<>(
-                PublicApi.class,
-                resourceFilePath("config/test-config.yaml"),
-                config("ledgerUrl", ledgerServer.baseUrl()),
-                config("publicAuthUrl", publicAuthServer.baseUrl() + "/v1/auth"),
-                config("rateLimiter.noOfReqPerNode", "2")
+        app = PublicApiTestApp.withOverrides(
+                "publicapi.ledger-url", ledgerServer.baseUrl(),
+                "publicapi.public-auth-url", publicAuthServer.baseUrl() + "/v1/auth",
+                "rate-limiter.no-of-req-per-node", "2"
         );
         app.before();
     }

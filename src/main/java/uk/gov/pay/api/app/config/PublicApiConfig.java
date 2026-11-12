@@ -1,15 +1,16 @@
 package uk.gov.pay.api.app.config;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.github.benmanes.caffeine.cache.CaffeineSpec;
-import io.dropwizard.core.Configuration;
+import io.micronaut.context.annotation.ConfigurationProperties;
+import io.micronaut.core.annotation.Nullable;
 
-import jakarta.validation.Valid;
+import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotNull;
 import java.net.URI;
 import java.util.Optional;
 
-public class PublicApiConfig extends Configuration {
+@ConfigurationProperties("publicapi")
+public class PublicApiConfig {
 
     @NotNull
     private String baseUrl;
@@ -29,66 +30,115 @@ public class PublicApiConfig extends Configuration {
     private String apiKeyHmacSecret;
 
     @NotNull
-    private CaffeineSpec authenticationCachePolicy;
+    private String authenticationCachePolicy;
 
-    @Valid
-    @NotNull
-    @JsonProperty("jerseyClientConfig")
+    private int adminPort;
+
+    private URI ecsContainerMetadataUriV4;
+
     private RestClientConfig restClientConfig;
 
-    @NotNull
-    @JsonProperty
     private RedisConfiguration redis;
 
-    @Valid
-    @NotNull
-    @JsonProperty("rateLimiter")
     private RateLimiterConfig rateLimiterConfig;
-
-    @JsonProperty("ecsContainerMetadataUriV4")
-    private URI ecsContainerMetadataUriV4;
 
     public String getBaseUrl() {
         return baseUrl;
+    }
+
+    public void setBaseUrl(String baseUrl) {
+        this.baseUrl = baseUrl;
     }
 
     public String getConnectorUrl() {
         return connectorUrl;
     }
 
+    public void setConnectorUrl(String connectorUrl) {
+        this.connectorUrl = connectorUrl;
+    }
+
     public String getLedgerUrl() {
         return ledgerUrl;
+    }
+
+    public void setLedgerUrl(String ledgerUrl) {
+        this.ledgerUrl = ledgerUrl;
     }
 
     public String getPublicAuthUrl() {
         return publicAuthUrl;
     }
 
+    public void setPublicAuthUrl(String publicAuthUrl) {
+        this.publicAuthUrl = publicAuthUrl;
+    }
+
     public Boolean getAllowHttpForReturnUrl() {
         return allowHttpForReturnUrl;
+    }
+
+    public void setAllowHttpForReturnUrl(Boolean allowHttpForReturnUrl) {
+        this.allowHttpForReturnUrl = allowHttpForReturnUrl;
     }
 
     public String getApiKeyHmacSecret() {
         return apiKeyHmacSecret;
     }
 
+    public void setApiKeyHmacSecret(String apiKeyHmacSecret) {
+        this.apiKeyHmacSecret = apiKeyHmacSecret;
+    }
+
+    public CaffeineSpec getAuthenticationCachePolicy() {
+        return CaffeineSpec.parse(authenticationCachePolicy);
+    }
+
+    public void setAuthenticationCachePolicy(String authenticationCachePolicy) {
+        this.authenticationCachePolicy = authenticationCachePolicy;
+    }
+
+    public int getAdminPort() {
+        return adminPort;
+    }
+
+    public void setAdminPort(int adminPort) {
+        this.adminPort = adminPort;
+    }
+
+    public Optional<URI> getEcsContainerMetadataUriV4() {
+        return Optional.ofNullable(ecsContainerMetadataUriV4);
+    }
+
+    public void setEcsContainerMetadataUriV4(@Nullable String ecsContainerMetadataUriV4) {
+        this.ecsContainerMetadataUriV4 = ecsContainerMetadataUriV4 == null || ecsContainerMetadataUriV4.isBlank()
+                ? null : URI.create(ecsContainerMetadataUriV4);
+    }
+
     public RestClientConfig getRestClientConfig() {
         return restClientConfig;
+    }
+
+    @Inject
+    public void setRestClientConfig(RestClientConfig restClientConfig) {
+        this.restClientConfig = restClientConfig;
     }
 
     public RateLimiterConfig getRateLimiterConfig() {
         return rateLimiterConfig;
     }
 
-    public CaffeineSpec getAuthenticationCachePolicy() {
-        return authenticationCachePolicy;
+    @Inject
+    public void setRateLimiterConfig(RateLimiterConfig rateLimiterConfig) {
+        this.rateLimiterConfig = rateLimiterConfig;
     }
 
     public RedisConfiguration getRedisConfiguration() {
         return redis;
     }
 
-    public Optional<URI> getEcsContainerMetadataUriV4() {
-        return Optional.ofNullable(ecsContainerMetadataUriV4);
+    @Inject
+    public void setRedisConfiguration(RedisConfiguration redis) {
+        this.redis = redis;
     }
 }

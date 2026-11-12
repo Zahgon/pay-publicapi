@@ -1,8 +1,11 @@
 package uk.gov.pay.api.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.api.agreement.model.AgreementLedgerResponse;
+import uk.gov.pay.api.app.RestClient;
+import uk.gov.pay.api.app.RestClientResponse;
 import uk.gov.pay.api.auth.Account;
 import uk.gov.pay.api.exception.GetAgreementException;
 import uk.gov.pay.api.exception.GetChargeException;
@@ -27,19 +30,14 @@ import uk.gov.pay.api.model.search.card.PaymentSearchResponse;
 import uk.gov.pay.api.validation.AgreementSearchValidator;
 
 import jakarta.inject.Inject;
-import jakarta.ws.rs.ProcessingException;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.core.GenericType;
-import jakarta.ws.rs.core.HttpHeaders;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
+import jakarta.inject.Singleton;
 import java.util.HashMap;
 import java.util.Map;
 
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.apache.hc.core5.http.HttpStatus.SC_OK;
 import static uk.gov.pay.api.common.SearchConstants.GATEWAY_ACCOUNT_ID;
 
+@Singleton
 public class LedgerService {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(LedgerService.class);
@@ -51,20 +49,17 @@ public class LedgerService {
     private static final String REFUND_TRANSACTION_TYPE = "REFUND";
     private static final String DISPUTE_TRANSACTION_TYPE = "DISPUTE";
 
-    private final Client client;
+    private final RestClient client;
     private final LedgerUriGenerator ledgerUriGenerator;
 
     @Inject
-    public LedgerService(Client client, LedgerUriGenerator ledgerUriGenerator) {
+    public LedgerService(RestClient client, LedgerUriGenerator ledgerUriGenerator) {
         this.client = client;
         this.ledgerUriGenerator = ledgerUriGenerator;
     }
 
     public Charge getPaymentTransaction(Account account, String paymentId) {
-        Response response = client
-                .target(ledgerUriGenerator.transactionURI(account, paymentId, PAYMENT_TRANSACTION_TYPE))
-                .request()
-                .get();
+        RestClientResponse response = client.get(ledgerUriGenerator.transactionURI(account, paymentId, PAYMENT_TRANSACTION_TYPE), Map.of());
 
         if (response.getStatus() == SC_OK) {
             TransactionResponse transactionResponse = response.readEntity(TransactionResponse.class);
@@ -75,10 +70,7 @@ public class LedgerService {
     }
 
     public RefundTransactionFromLedger getRefundTransaction(Account account, String transactionId, String parentExternalId) {
-        Response response = client
-                .target(ledgerUriGenerator.transactionURI(account, transactionId, REFUND_TRANSACTION_TYPE, parentExternalId))
-                .request()
-                .get();
+        RestClientResponse response = client.get(ledgerUriGenerator.transactionURI(account, transactionId, REFUND_TRANSACTION_TYPE, parentExternalId), Map.of());
 
         if (response.getStatus() == SC_OK) {
             return response.readEntity(RefundTransactionFromLedger.class);
@@ -88,10 +80,7 @@ public class LedgerService {
     }
 
     public TransactionEvents getTransactionEvents(Account account, String paymentId) {
-        Response response = client
-                .target(ledgerUriGenerator.transactionEventsURI(account, paymentId))
-                .request()
-                .get();
+        RestClientResponse response = client.get(ledgerUriGenerator.transactionEventsURI(account, paymentId), Map.of());
 
         if (response.getStatus() == SC_OK) {
             return response.readEntity(TransactionEvents.class);
@@ -100,10 +89,7 @@ public class LedgerService {
     }
 
     public RefundsFromLedger getPaymentRefunds(String accountId, String paymentId) {
-        Response response = client
-                .target(ledgerUriGenerator.transactionsForTransactionURI(accountId, paymentId, REFUND_TRANSACTION_TYPE))
-                .request()
-                .get();
+        RestClientResponse response = client.get(ledgerUriGenerator.transactionsForTransactionURI(accountId, paymentId, REFUND_TRANSACTION_TYPE), Map.of());
 
         if (response.getStatus() == SC_OK) {
             return response.readEntity(RefundsFromLedger.class);
@@ -117,16 +103,12 @@ public class LedgerService {
         paramsAsMap.put(PARAM_ACCOUNT_ID, account.accountId());
         paramsAsMap.put(PARAM_TRANSACTION_TYPE, REFUND_TRANSACTION_TYPE);
 
-        Response response = client
-                .target(ledgerUriGenerator.transactionsURIWithParams(paramsAsMap))
-                .request()
-                .accept(MediaType.APPLICATION_JSON_TYPE)
-                .get();
+        RestClientResponse response = client.get(ledgerUriGenerator.transactionsURIWithParams(paramsAsMap), Map.of("Accept", "application/json"));
 
         if (response.getStatus() == SC_OK) {
             try {
                 return response.readEntity(SearchRefundsResponseFromLedger.class);
-            } catch (ProcessingException exception) {
+            } catch (RestClientResponse.RestClientProcessingException exception) {
                 throw new SearchRefundsException(exception);
             }
         }
@@ -142,16 +124,12 @@ public class LedgerService {
             paramsAsMap.put("state", paramsAsMap.remove("status"));
         }
 
-        Response response = client
-                .target(ledgerUriGenerator.transactionsURIWithParams(paramsAsMap))
-                .request()
-                .accept(MediaType.APPLICATION_JSON_TYPE)
-                .get();
+        RestClientResponse response = client.get(ledgerUriGenerator.transactionsURIWithParams(paramsAsMap), Map.of("Accept", "application/json"));
 
         if (response.getStatus() == SC_OK) {
             try {
                 return response.readEntity(SearchDisputesResponseFromLedger.class);
-            } catch (ProcessingException exception) {
+            } catch (RestClientResponse.RestClientProcessingException exception) {
                 throw new SearchDisputesException(exception);
             }
         }
@@ -165,17 +143,13 @@ public class LedgerService {
         paramsAsMap.put(PARAM_TRANSACTION_TYPE, PAYMENT_TRANSACTION_TYPE);
         paramsAsMap.put(PARAM_EXACT_REFERENCE_MATCH, "true");
 
-        Response response = client
-                .target(ledgerUriGenerator.transactionsURIWithParams(paramsAsMap))
-                .request()
-                .accept(MediaType.APPLICATION_JSON_TYPE)
-                .get();
+        RestClientResponse response = client.get(ledgerUriGenerator.transactionsURIWithParams(paramsAsMap), Map.of("Accept", "application/json"));
 
         if (response.getStatus() == SC_OK) {
             try {
-                return response.readEntity(new GenericType<>() {
+                return response.readEntity(new TypeReference<>() {
                 });
-            } catch (ProcessingException ex) {
+            } catch (RestClientResponse.RestClientProcessingException ex) {
                 throw new SearchPaymentsException(ex);
             }
         }
@@ -184,11 +158,7 @@ public class LedgerService {
     }
 
     public AgreementLedgerResponse getAgreement(Account account, String agreementId) {
-        Response response = client
-                .target(ledgerUriGenerator.agreementURI(account, agreementId))
-                .request()
-                .header("X-Consistent", true)
-                .get();
+        RestClientResponse response = client.get(ledgerUriGenerator.agreementURI(account, agreementId), Map.of("X-Consistent", "true"));
 
         if (response.getStatus() == SC_OK) {
             return response.readEntity(AgreementLedgerResponse.class);
@@ -205,18 +175,14 @@ public class LedgerService {
         params.put(PARAM_EXACT_REFERENCE_MATCH, "true");
 
         String url = ledgerUriGenerator.agreementsURIWithParams(params);
-        Response ledgerResponse = client
-                .target(url)
-                .request()
-                .header(HttpHeaders.ACCEPT, APPLICATION_JSON)
-                .get();
+        RestClientResponse ledgerResponse = client.get(url, Map.of("Accept", "application/json"));
         LOGGER.info("response from ledger for agreement search: {}", ledgerResponse);
 
         if (ledgerResponse.getStatus() == SC_OK) {
             try {
-                return ledgerResponse.readEntity(new GenericType<>() {
+                return ledgerResponse.readEntity(new TypeReference<>() {
                 });
-            } catch (ProcessingException ex) {
+            } catch (RestClientResponse.RestClientProcessingException ex) {
                 throw new SearchAgreementsException(ex);
             }
         }

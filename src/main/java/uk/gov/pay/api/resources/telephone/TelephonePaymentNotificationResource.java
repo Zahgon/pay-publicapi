@@ -1,49 +1,55 @@
 package uk.gov.pay.api.resources.telephone;
 
-import com.codahale.metrics.annotation.Timed;
-import io.dropwizard.auth.Auth;
+import io.micronaut.http.HttpRequest;
+import io.micronaut.http.HttpResponse;
+import io.micronaut.http.HttpStatus;
+import io.micronaut.http.MediaType;
+import io.micronaut.http.annotation.Consumes;
+import io.micronaut.http.annotation.Controller;
+import io.micronaut.http.annotation.Post;
+import io.micronaut.http.annotation.Produces;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.api.auth.Account;
 import uk.gov.pay.api.model.telephone.CreateTelephonePaymentRequest;
 import uk.gov.pay.api.model.telephone.TelephonePaymentResponse;
+import uk.gov.pay.api.resources.binding.RequestEntityReader;
 import uk.gov.pay.api.service.telephone.CreateTelephonePaymentService;
+import uk.gov.pay.api.validation.RequestValidator;
 
 import jakarta.inject.Inject;
-import jakarta.validation.Valid;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.Response;
+import java.io.IOException;
 
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
-
-@Path("/")
+@Controller
 public class TelephonePaymentNotificationResource {
 
     private static final Logger logger = LoggerFactory.getLogger(TelephonePaymentNotificationResource.class);
 
     private final CreateTelephonePaymentService createTelephonePaymentService;
+    private final RequestEntityReader requestEntityReader;
+    private final RequestValidator requestValidator;
 
     @Inject
-    public TelephonePaymentNotificationResource(CreateTelephonePaymentService createTelephonePaymentService) {
+    public TelephonePaymentNotificationResource(CreateTelephonePaymentService createTelephonePaymentService,
+                                                RequestEntityReader requestEntityReader, RequestValidator requestValidator) {
         this.createTelephonePaymentService = createTelephonePaymentService;
+        this.requestEntityReader = requestEntityReader;
+        this.requestValidator = requestValidator;
     }
 
 
-    @POST
-    @Timed
-    @Path("/v1/payment_notification")
-    @Consumes(APPLICATION_JSON)
-    @Produces(APPLICATION_JSON)
-    public Response newPayment(@Auth Account account, @Valid CreateTelephonePaymentRequest createTelephonePaymentRequest) {
+    @Post("/v1/payment_notification")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public HttpResponse<?> newPayment(Account account, HttpRequest<?> request) throws IOException {
+        CreateTelephonePaymentRequest createTelephonePaymentRequest = requestEntityReader.read(request, CreateTelephonePaymentRequest.class);
+        requestValidator.validate(createTelephonePaymentRequest);
         Pair<TelephonePaymentResponse, Integer> responseAndStatusCode = createTelephonePaymentService.create(account, createTelephonePaymentRequest);
         var response = responseAndStatusCode.getLeft();
         var statusCode = responseAndStatusCode.getRight();
 
-        return Response.status(statusCode).entity(response).build();
+        return HttpResponse.status(HttpStatus.valueOf(statusCode)).body(response);
     }
 }
 

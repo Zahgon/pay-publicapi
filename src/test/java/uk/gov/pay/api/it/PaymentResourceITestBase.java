@@ -3,26 +3,23 @@ package uk.gov.pay.api.it;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import io.dropwizard.testing.DropwizardTestSupport;
 import io.restassured.response.ValidatableResponse;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import uk.gov.pay.api.app.PublicApi;
 import uk.gov.pay.api.app.config.PublicApiConfig;
-import uk.gov.pay.api.it.rule.RedisDockerRule;
+import uk.gov.pay.api.it.support.InMemoryRedisExtension;
+import uk.gov.pay.api.it.support.PublicApiTestApp;
 import uk.gov.pay.api.model.TokenPaymentType;
 import uk.gov.pay.api.utils.ApiKeyGenerator;
 
 import java.util.Map;
 
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
-import static io.dropwizard.testing.ConfigOverride.config;
-import static io.dropwizard.testing.ResourceHelpers.resourceFilePath;
+import static io.micronaut.http.HttpHeaders.AUTHORIZATION;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
-import static jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION;
 import static uk.gov.pay.api.utils.Urls.paymentLocationFor;
 
 public abstract class PaymentResourceITestBase {
@@ -34,7 +31,7 @@ public abstract class PaymentResourceITestBase {
     static final String LEDGER_ONLY_STRATEGY = "ledger-only";
 
     @RegisterExtension
-    private static final RedisDockerRule redisDockerRule = new RedisDockerRule();
+    private static final InMemoryRedisExtension redisDockerRule = new InMemoryRedisExtension();
 
     private static final Gson GSON = new GsonBuilder().create();
 
@@ -53,19 +50,17 @@ public abstract class PaymentResourceITestBase {
             .options(wireMockConfig().dynamicPort())
             .build();
 
-    protected static DropwizardTestSupport<PublicApiConfig> app;
+    protected static PublicApiTestApp app;
 
     PublicApiConfig configuration;
 
     @BeforeAll
     static void startApp() throws Exception {
-        app = new DropwizardTestSupport<>(
-                PublicApi.class,
-                resourceFilePath("config/test-config.yaml"),
-                config("connectorUrl", connectorServer.baseUrl()),
-                config("publicAuthUrl", publicAuthServer.baseUrl() + "/v1/auth"),
-                config("ledgerUrl", ledgerServer.baseUrl()),
-                config("redis.endpoint", redisDockerRule.getRedisUrl())
+        app = PublicApiTestApp.withOverrides(
+                "publicapi.connector-url", connectorServer.baseUrl(),
+                "publicapi.public-auth-url", publicAuthServer.baseUrl() + "/v1/auth",
+                "publicapi.ledger-url", ledgerServer.baseUrl(),
+                "redis.endpoint", redisDockerRule.getRedisUrl()
         );
         app.before();
     }

@@ -1,6 +1,6 @@
 # pay-publicapi
 
-GOV.UK Pay Public API service in Java (Dropwizard)
+GOV.UK Pay Public API service in Java (Micronaut)
 
 ## General configuration
 
@@ -8,7 +8,7 @@ Configuration of the application is performed via environment variables, some of
 
 | Variable                    | Required? | Default        | Description                                                                                                |
 |-----------------------------|-----------|----------------|------------------------------------------------------------------------------------------------------------|
-| `ADMIN_PORT`                | No        | 8081           | The port number to listen for Dropwizard admin requests on.                                                |
+| `ADMIN_PORT`                | No        | 8081           | The port number to listen for admin requests (`/ping`, `/healthcheck`) on.                                                |
 | `ALLOW_HTTP_FOR_RETURN_URL` | No        | false          | Whether to allow service return URLs to be non-HTTPS                                                       |
 | `BIND_HOST`                 | No        | 127.0.0.1      | The IP address for the application to bind to.                                                             |
 | `CONNECTOR_URL`             | Yes       | -              | The URL to the [connector](https://github.com/govuk-pay/pay-connector) service                              |

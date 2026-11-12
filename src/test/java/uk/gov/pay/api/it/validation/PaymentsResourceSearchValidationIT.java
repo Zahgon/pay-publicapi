@@ -3,7 +3,6 @@ package uk.gov.pay.api.it.validation;
 import com.google.common.collect.ImmutableMap;
 import com.jayway.jsonassert.JsonAssert;
 import io.restassured.response.ValidatableResponse;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,9 +12,9 @@ import uk.gov.pay.api.utils.PublicAuthMockClientJUnit5;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
+import static io.micronaut.http.HttpHeaders.AUTHORIZATION;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
-import static jakarta.ws.rs.core.HttpHeaders.AUTHORIZATION;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.Is.is;
 
@@ -193,7 +192,7 @@ class PaymentsResourceSearchValidationIT extends PaymentResourceITestBase {
                 .contentType(JSON).extract()
                 .body().asInputStream();
 
-        String json = IOUtils.toString(body, StandardCharsets.UTF_8);
+        String json = new String(body.readAllBytes(), StandardCharsets.UTF_8);
 
         JsonAssert.with(json)
                 .assertThat("$.*", hasSize(2))
@@ -214,7 +213,7 @@ class PaymentsResourceSearchValidationIT extends PaymentResourceITestBase {
                 .contentType(JSON).extract()
                 .body().asInputStream();
 
-        String json = IOUtils.toString(body, StandardCharsets.UTF_8);
+        String json = new String(body.readAllBytes(), StandardCharsets.UTF_8);
 
         JsonAssert.with(json)
                 .assertThat("$.*", hasSize(2))

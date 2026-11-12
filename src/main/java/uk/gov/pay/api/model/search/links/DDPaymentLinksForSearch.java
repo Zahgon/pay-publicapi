@@ -2,7 +2,7 @@ package uk.gov.pay.api.model.search.links;
 
 import uk.gov.pay.api.model.links.Link;
 
-import static jakarta.ws.rs.HttpMethod.GET;
+import static uk.gov.pay.api.utils.HttpMethods.GET;
 
 public class DDPaymentLinksForSearch {
     private Link self;

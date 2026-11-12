@@ -11,9 +11,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <hamcrest.version>3.0</hamcrest.version>
         <pay-java-commons.version>1.0.20261102112207</pay-java-commons.version>
-        <prometheus.version>0.16.0</prometheus.version>
         <swagger.lib.version>2.2.55</swagger.lib.version>
         <pact.version>4.7.7</pact.version>
+        <micronaut.version>4.10.23</micronaut.version>
+        <micronaut.core.version>4.10.36</micronaut.core.version>
         <PACT_BROKER_URL/>
         <PACT_BROKER_USERNAME/>
         <PACT_BROKER_PASSWORD/>
@@ -21,6 +22,7 @@
         <PACT_CONSUMER_TAG/>
     </properties>
 
+    
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -38,16 +40,9 @@
                 <scope>import</scope>
             </dependency>
             <dependency>
-                <groupId>io.dropwizard</groupId>
-                <artifactId>dropwizard-dependencies</artifactId>
-                <version>5.0.2</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>com.google.inject</groupId>
-                <artifactId>guice-bom</artifactId>
-                <version>7.0.0</version>
+                <groupId>io.micronaut.platform</groupId>
+                <artifactId>micronaut-platform</artifactId>
+                <version>${micronaut.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -61,27 +56,56 @@
         </dependencies>
     </dependencyManagement>
     <dependencies>
-        <!-- Main dependencies that are imported from one of the BOMs specified
-             in <dependencyManagement> so no explicit versions needed -->
+        <!-- Micronaut on the Jetty servlet container, imported from the Micronaut platform BOM -->
         <dependency>
-            <groupId>io.dropwizard</groupId>
-            <artifactId>dropwizard-core</artifactId>
+            <groupId>io.micronaut</groupId>
+            <artifactId>micronaut-inject</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.dropwizard</groupId>
-            <artifactId>dropwizard-auth</artifactId>
+            <groupId>io.micronaut</groupId>
+            <artifactId>micronaut-runtime</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.dropwizard</groupId>
-            <artifactId>dropwizard-client</artifactId>
+            <groupId>io.micronaut</groupId>
+            <artifactId>micronaut-http</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.dropwizard</groupId>
-            <artifactId>dropwizard-json-logging</artifactId>
+            <groupId>io.micronaut</groupId>
+            <artifactId>micronaut-router</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.google.inject</groupId>
-            <artifactId>guice</artifactId>
+            <groupId>io.micronaut.servlet</groupId>
+            <artifactId>micronaut-http-server-jetty</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micronaut</groupId>
+            <artifactId>micronaut-jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate.validator</groupId>
+            <artifactId>hibernate-validator</artifactId>
+            <version>8.0.3.Final</version>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.expressly</groupId>
+            <artifactId>expressly</artifactId>
+            <version>5.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
@@ -92,20 +116,25 @@
             <artifactId>logback-classic</artifactId>
         </dependency>
         <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>7.4</version>
+        </dependency>
+        <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.fasterxml.jackson.datatype</groupId>
-            <artifactId>jackson-datatype-jsr310</artifactId>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.fasterxml.jackson.dataformat</groupId>
-            <artifactId>jackson-dataformat-yaml</artifactId>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
@@ -116,41 +145,12 @@
             <artifactId>jackson-datatype-jdk8</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.fasterxml.jackson.jaxrs</groupId>
-            <artifactId>jackson-jaxrs-base</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.jaxrs</groupId>
-            <artifactId>jackson-jaxrs-json-provider</artifactId>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-parameter-names</artifactId>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.module</groupId>
-            <artifactId>jackson-module-afterburner</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.module</groupId>
-            <artifactId>jackson-module-jaxb-annotations</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>jakarta.xml.bind</groupId>
-            <artifactId>jakarta.xml.bind-api</artifactId>
-        </dependency>
-
-        <!-- Main dependencies that need explicit versions -->
-        <dependency>
-            <groupId>io.prometheus</groupId>
-            <artifactId>simpleclient</artifactId>
-            <version>${prometheus.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.prometheus</groupId>
-            <artifactId>simpleclient_servlet_jakarta</artifactId>
-            <version>${prometheus.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.prometheus</groupId>
-            <artifactId>simpleclient_dropwizard</artifactId>
-            <version>${prometheus.version}</version>
+            <artifactId>jackson-module-blackbird</artifactId>
         </dependency>
         <dependency>
             <groupId>uk.gov.service.payments</groupId>
@@ -159,17 +159,7 @@
         </dependency>
         <dependency>
             <groupId>uk.gov.service.payments</groupId>
-            <artifactId>utils-dropwizard-5</artifactId>
-            <version>${pay-java-commons.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>uk.gov.service.payments</groupId>
             <artifactId>validation-dropwizard-5</artifactId>
-            <version>${pay-java-commons.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>uk.gov.service.payments</groupId>
-            <artifactId>logging-dropwizard-5</artifactId>
             <version>${pay-java-commons.version}</version>
         </dependency>
         <dependency>
@@ -178,9 +168,22 @@
             <version>1.11.0</version>
         </dependency>
         <dependency>
+            <groupId>org.apache.httpcomponents.core5</groupId>
+            <artifactId>httpcore5</artifactId>
+            <version>5.4.4</version>
+        </dependency>
+        <dependency>
             <groupId>commons-codec</groupId>
             <artifactId>commons-codec</artifactId>
             <version>1.23.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
         </dependency>
         <dependency>
             <groupId>org.json</groupId>
@@ -191,7 +194,6 @@
             <groupId>io.swagger.core.v3</groupId>
             <artifactId>swagger-annotations</artifactId>
             <version>${swagger.lib.version}</version>
-            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>
@@ -203,12 +205,39 @@
             <artifactId>jakarta.annotation-api</artifactId>
             <version>3.0.0</version>
         </dependency>
-
-        <!-- Test dependencies that are imported from one of the BOMs specified
-             in <dependencyManagement> so no explicit versions needed -->
         <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>testcontainers</artifactId>
+            <groupId>jakarta.inject</groupId>
+            <artifactId>jakarta.inject-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>black.door</groupId>
+            <artifactId>hate</artifactId>
+            <version>v1r4t5</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-databind</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.datatype</groupId>
+                    <artifactId>jackson-datatype-jsr310</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.datatype</groupId>
+                    <artifactId>jackson-datatype-jdk8</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>io.lettuce</groupId>
+            <artifactId>lettuce-core</artifactId>
+            <version>6.9.0.RELEASE</version>
+        </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>io.micronaut.test</groupId>
+            <artifactId>micronaut-test-junit5</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -227,32 +256,27 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>io.dropwizard</groupId>
-            <artifactId>dropwizard-testing</artifactId>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <version>6.3.0</version>
             <scope>test</scope>
         </dependency>
+        <!-- Pin REST Assured's own modules to its version: the Micronaut platform BOM manages older ones. -->
         <dependency>
-            <groupId>org.junit.vintage</groupId>
-            <artifactId>junit-vintage-engine</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- Test dependencies that need explicit versions -->
-        <dependency>
-            <groupId>io.dropwizard.modules</groupId>
-            <artifactId>dropwizard-testing-junit4</artifactId>
-            <version>5.0.0</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>uk.gov.service.payments</groupId>
-            <artifactId>testing-dropwizard-5</artifactId>
-            <version>${pay-java-commons.version}</version>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured-common</artifactId>
+            <version>6.3.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.rest-assured</groupId>
-            <artifactId>rest-assured</artifactId>
+            <artifactId>json-path</artifactId>
+            <version>6.3.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>xml-path</artifactId>
             <version>6.3.0</version>
             <scope>test</scope>
         </dependency>
@@ -281,72 +305,39 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>au.com.dius.pact.consumer</groupId>
-            <artifactId>junit</artifactId>
-            <version>${pact.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.codehaus.groovy</groupId>
-            <artifactId>groovy</artifactId>
-            <version>3.0.25</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.exparity</groupId>
             <artifactId>hamcrest-date</artifactId>
             <version>2.0.8</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>black.door</groupId>
-            <artifactId>hate</artifactId>
-            <version>v1r4t5</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.fasterxml.jackson.core</groupId>
-                    <artifactId>jackson-databind</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.fasterxml.jackson.datatype</groupId>
-                    <artifactId>jackson-datatype-jsr310</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.fasterxml.jackson.datatype</groupId>
-                    <artifactId>jackson-datatype-jdk8</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>io.lettuce</groupId>
-            <artifactId>lettuce-core</artifactId>
-            <version>6.9.0.RELEASE</version>
         </dependency>
     </dependencies>
 
     <build>
         <plugins>
             <plugin>
-                <groupId>au.com.dius.pact.provider</groupId>
-                <artifactId>maven</artifactId>
-                <version>${pact.version}</version>
-                <configuration>
-                    <pactDirectory>target/pacts</pactDirectory>
-                    <pactBrokerUrl>${PACT_BROKER_URL}</pactBrokerUrl>
-                    <pactBrokerUsername>${PACT_BROKER_USERNAME}</pactBrokerUsername>
-                    <pactBrokerPassword>${PACT_BROKER_PASSWORD}</pactBrokerPassword>
-                    <projectVersion>${PACT_CONSUMER_VERSION}</projectVersion>
-                    <tags>
-                        <tag>${PACT_CONSUMER_TAG}</tag>
-                    </tags>
-                    <trimSnapshot>true</trimSnapshot>
-                </configuration>
-            </plugin>
-            <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.16.0</version>
                 <configuration>
                     <release>25</release>
+                    <!-- Constructor parameter names must stay out of the class files, for the main sources and the
+                         tests alike: Jackson's property order, and so the bytes of every JSON answer, depends on it. -->
+                    <parameters>false</parameters>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>io.micronaut</groupId>
+                            <artifactId>micronaut-inject-java</artifactId>
+                            <version>${micronaut.core.version}</version>
+                        </path>
+                        <path>
+                            <groupId>io.micronaut</groupId>
+                            <artifactId>micronaut-http-validation</artifactId>
+                            <version>${micronaut.core.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                    <compilerArgs>
+                        <arg>-Amicronaut.processing.group=uk.gov.pay</arg>
+                        <arg>-Amicronaut.processing.module=pay-publicapi</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
             <plugin>
@@ -360,55 +351,6 @@
                         </manifest>
                     </archive>
                 </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.11.0</version>
-                <executions>
-                    <execution>
-                        <id>analyze</id>
-                        <goals>
-                            <goal>analyze-only</goal>
-                        </goals>
-                        <configuration>
-                            <failOnWarning>false</failOnWarning>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>copy-dependencies</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <stripVersion>true</stripVersion>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>3.5.0</version>
-                <executions>
-                    <execution>
-                        <id>copy-resources</id>
-                        <phase>validate</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${basedir}/target</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>src/main/resources/config</directory>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -473,32 +415,7 @@
                 <version>3.6.4</version>
                 <configuration>
                     <mainClass>uk.gov.pay.api.app.PublicApi</mainClass>
-                    <arguments>
-                        <argument>server</argument>
-                        <argument>src/main/resources/config/config.yaml</argument>
-                    </arguments>
                 </configuration>
-            </plugin>
-            <plugin>
-                <groupId>io.swagger.core.v3</groupId>
-                <artifactId>swagger-maven-plugin-jakarta</artifactId>
-                <version>${swagger.lib.version}</version>
-                <configuration>
-                    <outputPath>openapi</outputPath>
-                    <outputFileName>publicapi_spec</outputFileName>
-                    <outputFormat>JSON</outputFormat>
-                    <prettyPrint>true</prettyPrint>
-                    <configurationFilePath>${basedir}/src/main/resources/swagger-config.yaml
-                    </configurationFilePath>
-                </configuration>
-                <executions>
-                    <execution>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>resolve</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>

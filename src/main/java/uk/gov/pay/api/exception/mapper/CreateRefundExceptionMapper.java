@@ -1,19 +1,20 @@
 package uk.gov.pay.api.exception.mapper;
 
+import io.micronaut.http.HttpResponse;
+import io.micronaut.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.api.exception.CreateRefundException;
 import uk.gov.pay.api.model.RequestError;
 import uk.gov.service.payments.commons.model.ErrorIdentifier;
 
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.ext.ExceptionMapper;
+import jakarta.inject.Singleton;
 
-import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
-import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
-import static jakarta.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
-import static jakarta.ws.rs.core.Response.Status.PRECONDITION_FAILED;
+import static io.micronaut.http.HttpStatus.BAD_REQUEST;
+import static io.micronaut.http.HttpStatus.FORBIDDEN;
+import static io.micronaut.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static io.micronaut.http.HttpStatus.NOT_FOUND;
+import static io.micronaut.http.HttpStatus.PRECONDITION_FAILED;
 import static uk.gov.pay.api.model.RequestError.Code.ACCOUNT_DISABLED;
 import static uk.gov.pay.api.model.RequestError.Code.CREATE_PAYMENT_REFUND_AMOUNT_AVAILABLE_MISMATCH;
 import static uk.gov.pay.api.model.RequestError.Code.CREATE_PAYMENT_REFUND_CONNECTOR_ERROR;
@@ -22,17 +23,18 @@ import static uk.gov.pay.api.model.RequestError.Code.CREATE_PAYMENT_REFUND_NOT_A
 import static uk.gov.pay.api.model.RequestError.Code.CREATE_PAYMENT_REFUND_NOT_FOUND_ERROR;
 import static uk.gov.pay.api.model.RequestError.aRequestError;
 
-public class CreateRefundExceptionMapper implements ExceptionMapper<CreateRefundException> {
+@Singleton
+public class CreateRefundExceptionMapper extends SafeExceptionMapper<CreateRefundException> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CreateRefundExceptionMapper.class);
 
     @Override
-    public Response toResponse(CreateRefundException exception) {
+    protected HttpResponse<?> toResponse(CreateRefundException exception) {
 
         RequestError requestError;
-        Response.Status status;
+        HttpStatus status;
 
-        if (exception.getErrorStatus() == NOT_FOUND.getStatusCode()) {
+        if (exception.getErrorStatus() == NOT_FOUND.getCode()) {
             requestError = aRequestError(CREATE_PAYMENT_REFUND_NOT_FOUND_ERROR);
             status = NOT_FOUND;
 
@@ -77,9 +79,6 @@ public class CreateRefundExceptionMapper implements ExceptionMapper<CreateRefund
             LOGGER.info("Connector invalid response was {}.\n Returning http status {} with error body {}", exception.getMessage(), status, requestError);
         }
 
-        return Response
-                .status(status)
-                .entity(requestError)
-                .build();
+        return ErrorResponses.of(status, requestError);
     }
 }

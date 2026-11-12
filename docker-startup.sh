@@ -2,4 +2,4 @@
 
 set -eu
 
-exec java ${JAVA_OPTS} -jar *-allinone.jar server *.yaml
+exec java ${JAVA_OPTS} -jar *-allinone.jar server

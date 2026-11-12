@@ -1,10 +1,10 @@
 package uk.gov.pay.api.exception;
 
-import jakarta.ws.rs.core.Response;
+import uk.gov.pay.api.app.RestClientResponse;
 
 public class GetEventsException extends ConnectorResponseErrorException {
 
-    public GetEventsException(Response response) {
+    public GetEventsException(RestClientResponse response) {
         super(response);
     }
 }

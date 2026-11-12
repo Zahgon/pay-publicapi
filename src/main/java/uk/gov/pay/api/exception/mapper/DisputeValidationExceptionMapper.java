@@ -1,25 +1,24 @@
 package uk.gov.pay.api.exception.mapper;
 
+import io.micronaut.http.HttpResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.api.exception.DisputesValidationException;
 import uk.gov.pay.api.model.RequestError;
 
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.ext.ExceptionMapper;
+import jakarta.inject.Singleton;
 
-public class DisputeValidationExceptionMapper implements ExceptionMapper<DisputesValidationException> {
+@Singleton
+public class DisputeValidationExceptionMapper extends SafeExceptionMapper<DisputesValidationException> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DisputeValidationExceptionMapper.class);
 
     @Override
-    public Response toResponse(DisputesValidationException exception) {
+    protected HttpResponse<?> toResponse(DisputesValidationException exception) {
 
         RequestError requestError = exception.getRequestError();
         LOGGER.debug("Dispute Validation exception {}", requestError);
 
-        return Response.status(422)
-                .entity(requestError)
-                .build();
+        return ErrorResponses.of(422, requestError);
     }
 }

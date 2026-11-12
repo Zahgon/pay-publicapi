@@ -1,10 +1,10 @@
 package uk.gov.pay.api.exception;
 
-import jakarta.ws.rs.core.Response;
+import uk.gov.pay.api.app.RestClientResponse;
 
 public class CreateChargeException extends ConnectorResponseErrorException {
 
-    public CreateChargeException(Response response) {
+    public CreateChargeException(RestClientResponse response) {
         super(response);
     }
 }

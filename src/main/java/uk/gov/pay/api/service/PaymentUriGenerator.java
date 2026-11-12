@@ -1,35 +1,38 @@
 package uk.gov.pay.api.service;
 
-import jakarta.ws.rs.core.UriBuilder;
+import uk.gov.pay.api.utils.UriTemplate;
+
+import jakarta.inject.Singleton;
 import java.net.URI;
 
+@Singleton
 public class PaymentUriGenerator {
     public URI getPaymentURI(String baseUrl, String chargeId) {
-        return UriBuilder.fromUri(baseUrl)
+        return UriTemplate.fromUri(baseUrl)
                 .path("/v1/payments/{paymentId}")
                 .build(chargeId);
     }
 
     public URI getPaymentEventsURI(String baseUrl, String chargeId) {
-        return UriBuilder.fromUri(baseUrl)
+        return UriTemplate.fromUri(baseUrl)
                 .path("/v1/payments/{paymentId}/events")
                 .build(chargeId);
     }
 
     public URI getPaymentCancelURI(String baseUrl, String chargeId) {
-        return UriBuilder.fromUri(baseUrl)
+        return UriTemplate.fromUri(baseUrl)
                 .path("/v1/payments/{paymentId}/cancel")
                 .build(chargeId);
     }
 
     public URI getPaymentRefundsURI(String baseUrl, String chargeId) {
-        return UriBuilder.fromUri(baseUrl)
+        return UriTemplate.fromUri(baseUrl)
                 .path("/v1/payments/{paymentId}/refunds")
                 .build(chargeId);
     }
 
     public URI getPaymentCaptureURI(String baseUrl, String chargeId) {
-        return UriBuilder.fromUri(baseUrl)
+        return UriTemplate.fromUri(baseUrl)
                 .path("/v1/payments/{paymentId}/capture")
                 .build(chargeId);
     }
